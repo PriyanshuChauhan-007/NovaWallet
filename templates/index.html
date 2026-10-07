@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <script>
+        /* Only for avoiding a flash of the wrong theme; the toggle logic lives in main.js. */
+        try { document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark"; } catch (e) {}
+    </script>
+    <title>NovaWallet - Secure &amp; Fast</title>
+    <meta name="description" content="NovaWallet: a secure digital wallet to load money, pay friends with OTP verification, request money and split bills.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+
+{% macro theme_toggle(id) -%}
+<button type="button" class="icon-btn theme-toggle" id="{{ id }}" data-action="toggle-theme">
+    <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+    <span class="visually-hidden icon-moon">Switch to dark theme</span>
+    <span class="visually-hidden icon-sun">Switch to light theme</span>
+</button>
+{%- endmacro %}
+
+<div class="main-container">
+
+    <!-- ============================ AUTH ============================ -->
+    <main id="auth">
+        {{ theme_toggle('authThemeToggle') }}
+        <div class="logo-box" aria-hidden="true">NW</div>
+        <h1>NovaWallet</h1>
+        <p class="subtitle" id="authSubtitle">Sign in to your secure wallet</p>
+
+        <div class="auth-tabs" id="authTabs" role="tablist" data-mode="login">
+            <button type="button" class="auth-tab" role="tab" id="tabLogin" aria-selected="true" data-mode="login">Sign In</button>
+            <button type="button" class="auth-tab" role="tab" id="tabSignup" aria-selected="false" data-mode="signup">Create Account</button>
+        </div>
+
+        <form id="authForm" data-mode="login" novalidate>
+            <label for="userInput" class="visually-hidden">Username</label>
+            <input type="text" id="userInput" name="username" placeholder="Enter Username" autocomplete="username" required>
+
+            <div class="signup-only">
+                <label for="emailInput" class="visually-hidden">Email address</label>
+                <input type="email" id="emailInput" name="email" placeholder="Enter Email Address" autocomplete="email">
+                <label for="phoneInput" class="visually-hidden">Phone number</label>
+                <input type="tel" id="phoneInput" name="phone" placeholder="Enter Phone Number" autocomplete="tel">
+            </div>
+
+            <div class="password-wrap">
+                <label for="passwordInput" class="visually-hidden">Password</label>
+                <input type="password" id="passwordInput" name="password" placeholder="Enter Password" autocomplete="current-password" required>
+                <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" aria-pressed="false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+            </div>
+            <p class="field-hint signup-only">Minimum 8 characters.</p>
+
+            <button type="submit" class="btn-primary" id="authSubmitBtn">Secure Login</button>
+        </form>
+    </main>
+
+    <!-- ========================== DASHBOARD ========================== -->
+    <div id="dashboard">
+        <header class="header">
+            <div class="user-badge">
+                <div class="mini-logo" aria-hidden="true">NW</div>
+                NovaWallet
+            </div>
+            <div class="header-right">
+                <div id="userBadge" class="handle-pill"></div>
+                {{ theme_toggle('dashThemeToggle') }}
+                <button type="button" class="icon-btn" id="logoutBtn" aria-label="Logout" title="Logout">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <section class="balance-card" aria-label="Balances">
+                <p class="balance-label">Total Wallet Balance</p>
+                <h2 id="viewWallet" class="balance-amt skeleton" aria-live="polite">₹0.00</h2>
+                <div class="bank-row">
+                    <span>Linked Bank A/C</span>
+                    <span id="viewBank">₹0.00</span>
+                </div>
+            </section>
+
+            <nav class="action-grid" aria-label="Quick actions">
+                <button type="button" class="action-btn" data-panel="depositArea" id="actLoad">
+                    <div class="icon-box blue">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                    </div>
+                    <span class="action-label">Load</span>
+                </button>
+                <button type="button" class="action-btn" data-panel="payArea" id="actSend">
+                    <div class="icon-box purple">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </div>
+                    <span class="action-label">Send</span>
+                </button>
+                <button type="button" class="action-btn" data-panel="requestArea" id="actRequest">
+                    <div class="icon-box pink">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    </div>
+                    <span class="action-label">Request</span>
+                </button>
+                <button type="button" class="action-btn" id="actSplit">
+                    <div class="icon-box amber">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <span class="action-label">Split</span>
+                </button>
+                <button type="button" class="action-btn" id="actReceive">
+                    <div class="icon-box orange">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </div>
+                    <span class="action-label">Receive</span>
+                </button>
+            </nav>
+
+            <!-- Load from bank -->
+            <section id="depositArea" class="panel" aria-labelledby="depositTitle">
+                <h3 id="depositTitle">Load from Bank</h3>
+                <form id="depositForm" novalidate>
+                    <label for="depAmt" class="visually-hidden">Amount</label>
+                    <input type="number" id="depAmt" placeholder="Amount (₹)" min="1" max="50000" step="0.01" inputmode="decimal">
+                    <button type="submit" class="btn-primary" id="depBtn">Verify &amp; Load Funds</button>
+                </form>
+            </section>
+
+            <!-- Send money -->
+            <section id="payArea" class="panel" aria-labelledby="payTitle">
+                <h3 id="payTitle">Send Money</h3>
+                <form id="payStep1" novalidate>
+                    <label for="payTo" class="visually-hidden">Receiver username</label>
+                    <input type="text" id="payTo" placeholder="Receiver Username" autocomplete="off" list="userSuggestions">
+                    <label for="payAmt" class="visually-hidden">Amount</label>
+                    <input type="number" id="payAmt" placeholder="Amount (₹)" min="1" max="50000" step="0.01" inputmode="decimal">
+                    <label for="payCat" class="visually-hidden">Category</label>
+                    <select id="payCat">
+                        <option value="Transfer">Money Transfer</option>
+                        <option value="Food">Food &amp; Drinks</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Bills">Bills &amp; Utilities</option>
+                    </select>
+                    <button type="submit" class="btn-primary" id="reqOtpBtn">Generate OTP</button>
+                </form>
+                <form id="payStep2" style="display:none; text-align: center;" novalidate>
+                    <p class="panel-hint" id="payOtpHint">Check terminal for OTP</p>
+                    <label for="payOtp" class="visually-hidden">One-time password</label>
+                    <input type="text" id="payOtp" class="otp-input" placeholder="Enter 4-digit OTP" maxlength="4" inputmode="numeric" autocomplete="one-time-code">
+                    <button type="submit" class="btn-primary" id="confPayBtn">Confirm Transaction</button>
+                    <button type="button" class="btn-ghost" id="payBackBtn">Edit Details</button>
+                </form>
+            </section>
+
+            <!-- Request money -->
+            <section id="requestArea" class="panel" aria-labelledby="requestTitle">
+                <h3 id="requestTitle">Request Money</h3>
+                <form id="requestForm" novalidate>
+                    <label for="reqFrom" class="visually-hidden">Request from username</label>
+                    <input type="text" id="reqFrom" placeholder="Request From (Username)" autocomplete="off" list="userSuggestions">
+                    <label for="reqAmt" class="visually-hidden">Amount</label>
+                    <input type="number" id="reqAmt" placeholder="Amount (₹)" min="1" max="50000" step="0.01" inputmode="decimal">
+                    <label for="reqNote" class="visually-hidden">Note</label>
+                    <input type="text" id="reqNote" placeholder="What's it for? (optional)" maxlength="140">
+                    <button type="submit" class="btn-primary" id="reqMoneyBtn">Send Request</button>
+                </form>
+            </section>
+
+            <datalist id="userSuggestions"></datalist>
+
+            <section class="analytics" aria-label="Money in and out">
+                <div class="chart-container"><canvas id="chartCanvas" aria-label="Money in vs money out chart" role="img"></canvas></div>
+                <div class="stat-box">
+                    <div class="stat-item"><div class="dot in"></div> Money In: <span id="txtIn" class="stat-in">₹0</span></div>
+                    <div class="stat-item"><div class="dot out"></div> Money Out: <span id="txtOut" class="stat-out">₹0</span></div>
+                </div>
+            </section>
+
+            <!-- Pending requests -->
+            <section id="requestsSection" aria-labelledby="requestsTitle">
+                <div class="section-head">
+                    <h3 class="section-title" id="requestsTitle">Pending Requests <span class="count-badge" id="requestCount">0</span></h3>
+                </div>
+                <div class="request-list" id="incomingList"></div>
+                <div class="request-list" id="outgoingWrap">
+                    <p class="sub-heading">Sent by you</p>
+                    <div id="outgoingList"></div>
+                </div>
+            </section>
+
+            <!-- History -->
+            <section aria-labelledby="historyTitle">
+                <div class="section-head">
+                    <h3 class="section-title" id="historyTitle">Recent Activity</h3>
+                    <div class="export-group">
+                        <button type="button" class="export-btn" id="exportCsvBtn" title="Export current view as CSV">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            CSV
+                        </button>
+                        <button type="button" class="export-btn" id="exportPdfBtn" title="Download statement as PDF">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-row" id="filterRow" role="toolbar" aria-label="Filter transactions">
+                    <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
+                    <button type="button" class="chip" data-filter="credit" aria-pressed="false">Credits</button>
+                    <button type="button" class="chip" data-filter="debit" aria-pressed="false">Debits</button>
+                    <button type="button" class="chip" data-filter="Food" aria-pressed="false">Food</button>
+                    <button type="button" class="chip" data-filter="Shopping" aria-pressed="false">Shopping</button>
+                    <button type="button" class="chip" data-filter="Bills" aria-pressed="false">Bills</button>
+                </div>
+                <div class="history-list" id="historyList"></div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<!-- QR / Receive dialog -->
+<dialog id="qrModal" class="modal" closedby="any" aria-labelledby="qrTitle">
+    <div class="modal-card qr-card">
+        <h2 id="qrTitle" class="visually-hidden">Receive money</h2>
+        <img id="qrImg" src="" alt="QR code linking to a payment to you">
+        <p class="qr-caption">SCAN TO PAY ME</p>
+        <form method="dialog"><button class="btn-ghost" type="submit">Close</button></form>
+    </div>
+</dialog>
+
+<!-- Split bill dialog -->
+<dialog id="splitModal" class="modal" closedby="any" aria-labelledby="splitTitle">
+    <form class="modal-card" id="splitForm" novalidate>
+        <div class="modal-head">
+            <h2 id="splitTitle">Split a Bill</h2>
+            <button type="button" class="icon-btn" id="splitCloseBtn" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <p class="modal-sub">Divide a bill equally and send a payment request to each person.</p>
+
+        <label class="field-label" for="splitTotal">Total amount</label>
+        <input type="number" id="splitTotal" placeholder="Total Bill (₹)" min="1" step="0.01" inputmode="decimal">
+
+        <label class="field-label" for="splitNote">Description</label>
+        <input type="text" id="splitNote" placeholder="e.g. Dinner at Toit" maxlength="140">
+
+        <label class="field-label" for="splitCat">Category</label>
+        <select id="splitCat">
+            <option value="Food">Food &amp; Drinks</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills &amp; Utilities</option>
+            <option value="Transfer">Other</option>
+        </select>
+
+        <label class="field-label" for="splitSearch">Split with</label>
+        <div class="participant-box">
+            <input type="text" id="splitSearch" placeholder="Search username &amp; press Enter" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-controls="splitSuggestions" aria-autocomplete="list">
+            <ul class="suggestions" id="splitSuggestions" role="listbox" aria-label="Matching users"></ul>
+        </div>
+        <div class="participant-chips" id="splitChips" aria-live="polite"></div>
+
+        <label class="switch-row" for="splitIncludeSelf">
+            <span>Include me in the split</span>
+            <span class="switch">
+                <input type="checkbox" id="splitIncludeSelf" checked>
+                <span class="track"></span>
+            </span>
+        </label>
+
+        <div class="split-preview" id="splitPreview" aria-live="polite">
+            <div class="big" id="splitEach">₹0.00 each</div>
+            <div class="small" id="splitSummary">Add people to see the breakdown</div>
+            <ul class="split-breakdown" id="splitBreakdown"></ul>
+        </div>
+
+        <button type="submit" class="btn-primary" id="splitSubmitBtn">Send Requests</button>
+    </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+</body>
+</html>
