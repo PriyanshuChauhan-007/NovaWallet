@@ -135,12 +135,12 @@ def utcnow() -> datetime:
 class User(db.Model):
     __tablename__ = "users"
 
-    id: int | None = db.Column(db.Integer, primary_key=True)
-    username: str = db.Column(db.String(32), nullable=False)
-    email: str | None = db.Column(db.String(255))
-    phone: str | None = db.Column(db.String(20))
-    password_hash: str = db.Column(db.String(255), nullable=False)
-    created_at: datetime = db.Column(db.DateTime, nullable=False, default=utcnow)
+    id: Any = db.Column(db.Integer, primary_key=True)
+    username: Any = db.Column(db.String(32), nullable=False)
+    email: Any = db.Column(db.String(255))
+    phone: Any = db.Column(db.String(20))
+    password_hash: Any = db.Column(db.String(255), nullable=False)
+    created_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     wallet: Any = db.relationship(
         "Wallet", back_populates="user", uselist=False, cascade="all, delete-orphan"
@@ -187,13 +187,13 @@ class User(db.Model):
 class Wallet(db.Model):
     __tablename__ = "wallets"
 
-    id: int | None = db.Column(db.Integer, primary_key=True)
-    user_id: int = db.Column(
+    id: Any = db.Column(db.Integer, primary_key=True)
+    user_id: Any = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
-    balance_paise: int = db.Column(db.Integer, nullable=False, default=0)
-    bank_balance_paise: int = db.Column(db.Integer, nullable=False, default=DEFAULT_BANK_PAISE)
-    updated_at: datetime = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+    balance_paise: Any = db.Column(db.Integer, nullable=False, default=0)
+    bank_balance_paise: Any = db.Column(db.Integer, nullable=False, default=DEFAULT_BANK_PAISE)
+    updated_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
     user: Any = db.relationship("User", back_populates="wallet")
 
@@ -233,15 +233,15 @@ class Transaction(db.Model):
     KIND_LOAD: str = "LOAD"
     KIND_TRANSFER: str = "TRANSFER"
 
-    id: int | None = db.Column(db.Integer, primary_key=True)
-    txn_id: str = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    sender_id: int | None = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
-    receiver_id: int = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    amount_paise: int = db.Column(db.Integer, nullable=False)
-    category: str = db.Column(db.String(32), nullable=False, default="Transfer")
-    kind: str = db.Column(db.String(16), nullable=False, default=KIND_TRANSFER)
-    note: str | None = db.Column(db.String(140))
-    timestamp: datetime = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+    id: Any = db.Column(db.Integer, primary_key=True)
+    txn_id: Any = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    sender_id: Any = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    receiver_id: Any = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    amount_paise: Any = db.Column(db.Integer, nullable=False)
+    category: Any = db.Column(db.String(32), nullable=False, default="Transfer")
+    kind: Any = db.Column(db.String(16), nullable=False, default=KIND_TRANSFER)
+    note: Any = db.Column(db.String(140))
+    timestamp: Any = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
 
     sender: Any = db.relationship("User", foreign_keys=[sender_id])
     receiver: Any = db.relationship("User", foreign_keys=[receiver_id])
@@ -252,7 +252,7 @@ class Transaction(db.Model):
         self,
         txn_id: str = "",
         sender_id: int | None = None,
-        receiver_id: int = 0,
+        receiver_id: int | None = None,
         amount_paise: int = 0,
         category: str = "Transfer",
         kind: str = "TRANSFER",
@@ -266,7 +266,7 @@ class Transaction(db.Model):
         if txn_id:
             self.txn_id = txn_id
         self.sender_id = sender_id
-        if receiver_id:
+        if receiver_id is not None:
             self.receiver_id = receiver_id
         self.amount_paise = amount_paise
         self.category = category
@@ -293,18 +293,18 @@ class PaymentRequest(db.Model):
     DECLINED: str = "DECLINED"
     CANCELLED: str = "CANCELLED"
 
-    id: int | None = db.Column(db.Integer, primary_key=True)
-    request_id: str = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    requester_id: int = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    payer_id: int = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    amount_paise: int = db.Column(db.Integer, nullable=False)
-    category: str = db.Column(db.String(32), nullable=False, default="Transfer")
-    note: str | None = db.Column(db.String(140))
-    status: str = db.Column(db.String(12), nullable=False, default=PENDING, index=True)
-    split_id: str | None = db.Column(db.String(20), index=True)
-    txn_id: str | None = db.Column(db.String(20))
-    created_at: datetime = db.Column(db.DateTime, nullable=False, default=utcnow)
-    resolved_at: datetime | None = db.Column(db.DateTime)
+    id: Any = db.Column(db.Integer, primary_key=True)
+    request_id: Any = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    requester_id: Any = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    payer_id: Any = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    amount_paise: Any = db.Column(db.Integer, nullable=False)
+    category: Any = db.Column(db.String(32), nullable=False, default="Transfer")
+    note: Any = db.Column(db.String(140))
+    status: Any = db.Column(db.String(12), nullable=False, default=PENDING, index=True)
+    split_id: Any = db.Column(db.String(20), index=True)
+    txn_id: Any = db.Column(db.String(20))
+    created_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow)
+    resolved_at: Any = db.Column(db.DateTime)
 
     requester: Any = db.relationship("User", foreign_keys=[requester_id])
     payer: Any = db.relationship("User", foreign_keys=[payer_id])
@@ -314,8 +314,8 @@ class PaymentRequest(db.Model):
     def __init__(
         self,
         request_id: str = "",
-        requester_id: int = 0,
-        payer_id: int = 0,
+        requester_id: int | None = None,
+        payer_id: int | None = None,
         amount_paise: int = 0,
         category: str = "Transfer",
         note: str | None = None,
@@ -331,9 +331,9 @@ class PaymentRequest(db.Model):
         super().__init__(**kwargs)
         if request_id:
             self.request_id = request_id
-        if requester_id:
+        if requester_id is not None:
             self.requester_id = requester_id
-        if payer_id:
+        if payer_id is not None:
             self.payer_id = payer_id
         self.amount_paise = amount_paise
         self.category = category
@@ -364,18 +364,18 @@ class OtpChallenge(db.Model):
     PURPOSE_PAY: str = "PAY"
     PURPOSE_APPROVE: str = "APPROVE"
 
-    user_id: int = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    code_hash: str = db.Column(db.String(64), nullable=False)
-    purpose: str = db.Column(db.String(12), nullable=False)
-    receiver_id: int | None = db.Column(db.Integer, db.ForeignKey("users.id"))
-    amount_paise: int = db.Column(db.Integer, nullable=False)
-    request_id: str | None = db.Column(db.String(20))
-    attempts: int = db.Column(db.Integer, nullable=False, default=0)
-    expires_at: datetime = db.Column(db.DateTime, nullable=False)
+    user_id: Any = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    code_hash: Any = db.Column(db.String(64), nullable=False)
+    purpose: Any = db.Column(db.String(12), nullable=False)
+    receiver_id: Any = db.Column(db.Integer, db.ForeignKey("users.id"))
+    amount_paise: Any = db.Column(db.Integer, nullable=False)
+    request_id: Any = db.Column(db.String(20))
+    attempts: Any = db.Column(db.Integer, nullable=False, default=0)
+    expires_at: Any = db.Column(db.DateTime, nullable=False)
 
     def __init__(
         self,
-        user_id: int = 0,
+        user_id: int | None = None,
         code_hash: str = "",
         purpose: str = "",
         receiver_id: int | None = None,
@@ -386,7 +386,7 @@ class OtpChallenge(db.Model):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        if user_id:
+        if user_id is not None:
             self.user_id = user_id
         if code_hash:
             self.code_hash = code_hash
@@ -562,7 +562,7 @@ def consume_otp(challenge: OtpChallenge) -> None:
         .where(OtpChallenge.user_id == challenge.user_id, OtpChallenge.code_hash == challenge.code_hash)
         .execution_options(synchronize_session=False)
     )
-    if result.rowcount != 1:
+    if getattr(result, "rowcount", 0) != 1:
         raise TransferError("This OTP has already been used.", 409)
 
 
@@ -575,7 +575,7 @@ def _adjust_wallet(user_id: int, delta: int) -> bool:
         stmt = stmt.where(Wallet.balance_paise + delta <= WALLET_LIMIT_PAISE)
     stmt = stmt.values(balance_paise=Wallet.balance_paise + delta, updated_at=utcnow())
     result = db.session.execute(stmt.execution_options(synchronize_session=False))
-    return result.rowcount == 1
+    return getattr(result, "rowcount", 0) == 1
 
 
 def execute_transfer(sender: User, receiver: User, amount_paise: int, category: str, note=None) -> Transaction:
@@ -861,9 +861,9 @@ def deposit():
             )
             .execution_options(synchronize_session=False)
         )
-        if result.rowcount != 1:
+        if getattr(result, "rowcount", 0) != 1:
             wallet = db.session.get(Wallet, user.wallet.id, populate_existing=True)
-            if wallet.balance_paise + amt > WALLET_LIMIT_PAISE:
+            if wallet and wallet.balance_paise + amt > WALLET_LIMIT_PAISE:
                 raise TransferError("Wallet limit of ₹1,00,000 exceeded!")
             raise TransferError("Insufficient Bank Funds!")
 
@@ -931,9 +931,10 @@ def confirm_pay():
     except ValueError as e:
         return err(str(e))
 
-    challenge, error = verify_otp(sender, body.get("otp"), OtpChallenge.PURPOSE_PAY, receiver.id, amt)
-    if error:
-        return error
+    otp_code = str(body.get("otp") or "")
+    challenge, error = verify_otp(sender, otp_code, OtpChallenge.PURPOSE_PAY, receiver.id, amt)
+    if error or challenge is None:
+        return error or err("Invalid OTP code!")
 
     category = clean_category(body.get("category"))
     note = clean_note(body.get("note"))
@@ -1007,7 +1008,7 @@ def _transition_request(request_id: str, actor_filter, new_status: str):
         .values(status=new_status, resolved_at=utcnow())
         .execution_options(synchronize_session=False)
     )
-    if result.rowcount != 1:
+    if getattr(result, "rowcount", 0) != 1:
         raise TransferError("This request is no longer pending.", 409)
 
 
@@ -1020,11 +1021,12 @@ def approve_request(request_id):
     if not pr or pr.status != PaymentRequest.PENDING:
         return err("This request is no longer pending.", 404)
 
+    otp_code = str(json_body().get("otp") or "")
     challenge, error = verify_otp(
-        payer, json_body().get("otp"), OtpChallenge.PURPOSE_APPROVE, pr.requester_id, pr.amount_paise, pr.request_id
+        payer, otp_code, OtpChallenge.PURPOSE_APPROVE, pr.requester_id, pr.amount_paise, pr.request_id
     )
-    if error:
-        return error
+    if error or challenge is None:
+        return error or err("Invalid OTP code!")
 
     requester = pr.requester
 
