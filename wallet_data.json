@@ -1,0 +1,254 @@
+{
+    "Priyanshu": {
+        "wallet_balance": 32500.0,
+        "bank_balance": 18000.0,
+        "history": [
+            {
+                "txn_id": "TXN-BZL7OPAL",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b920000.0 from Bank",
+                "dt": "19 Apr, 22:28"
+            },
+            {
+                "txn_id": "TXN-VGCD04IP",
+                "type": "CREDIT",
+                "desc": "Received \u20b910000.0 from Prakhar",
+                "dt": "19 Apr, 22:38"
+            },
+            {
+                "txn_id": "TXN-B1PQS4P1",
+                "type": "DEBIT",
+                "desc": "Paid \u20b95000.0 to Prakhar",
+                "dt": "19 Apr, 22:38"
+            },
+            {
+                "txn_id": "TXN-F1AQHE0Y",
+                "type": "DEBIT",
+                "desc": "Paid \u20b95000.0 to Prakhar",
+                "dt": "19 Apr, 22:45"
+            },
+            {
+                "txn_id": "TXN-VWSQBJRC",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b910000.0 from Bank",
+                "dt": "19 Apr, 22:47"
+            },
+            {
+                "txn_id": "TXN-L0MIYOSB",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b91000.0 from Bank",
+                "dt": "19 Apr, 22:48"
+            },
+            {
+                "txn_id": "TXN-1A7BJQAN",
+                "type": "CREDIT",
+                "desc": "Received \u20b9500.0 from Prakhar",
+                "dt": "19 Apr, 22:49"
+            },
+            {
+                "txn_id": "TXN-6O4869Z4",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9100.0 to Prakhar",
+                "dt": "19 Apr, 22:53"
+            },
+            {
+                "txn_id": "TXN-T6SRZQYO",
+                "type": "CREDIT",
+                "desc": "Received \u20b9500.0 from Bikash",
+                "dt": "19 Apr, 23:08"
+            },
+            {
+                "txn_id": "TXN-9JA7S1TE",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b91000.0 from Bank",
+                "dt": "20 Apr, 20:59"
+            },
+            {
+                "txn_id": "TXN-A0NQ8VXZ",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9900.0 to Prakhar",
+                "dt": "20 Apr, 21:00"
+            },
+            {
+                "txn_id": "TXN-WKD16T8M",
+                "type": "CREDIT",
+                "desc": "Received \u20b9500.0 from Prakhar",
+                "dt": "20 Apr, 21:01"
+            }
+        ],
+        "stats": {
+            "in": 43500.0,
+            "out": 11000.0
+        }
+    },
+    "Prakhar": {
+        "wallet_balance": 21000.0,
+        "bank_balance": 29000.0,
+        "history": [
+            {
+                "txn_id": "TXN-IR2A2S4K",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b920000.0 from Bank",
+                "dt": "19 Apr, 22:29"
+            },
+            {
+                "txn_id": "TXN-VGCD04IP",
+                "type": "DEBIT",
+                "desc": "Paid \u20b910000.0 to Priyanshu",
+                "dt": "19 Apr, 22:38"
+            },
+            {
+                "txn_id": "TXN-B1PQS4P1",
+                "type": "CREDIT",
+                "desc": "Received \u20b95000.0 from Priyanshu",
+                "dt": "19 Apr, 22:38"
+            },
+            {
+                "txn_id": "TXN-F1AQHE0Y",
+                "type": "CREDIT",
+                "desc": "Received \u20b95000.0 from Priyanshu",
+                "dt": "19 Apr, 22:45"
+            },
+            {
+                "txn_id": "TXN-1X091592",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b91000.0 from Bank",
+                "dt": "19 Apr, 22:48"
+            },
+            {
+                "txn_id": "TXN-1A7BJQAN",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9500.0 to Priyanshu",
+                "dt": "19 Apr, 22:49"
+            },
+            {
+                "txn_id": "TXN-6O4869Z4",
+                "type": "CREDIT",
+                "desc": "Received \u20b9100.0 from Priyanshu",
+                "dt": "19 Apr, 22:53"
+            },
+            {
+                "txn_id": "TXN-A0NQ8VXZ",
+                "type": "CREDIT",
+                "desc": "Received \u20b9900.0 from Priyanshu",
+                "dt": "20 Apr, 21:00"
+            },
+            {
+                "txn_id": "TXN-WKD16T8M",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9500.0 to Priyanshu",
+                "dt": "20 Apr, 21:01"
+            }
+        ],
+        "stats": {
+            "in": 32000.0,
+            "out": 11000.0
+        }
+    },
+    "Rahul": {
+        "wallet_balance": 10120.0,
+        "bank_balance": 40000.0,
+        "history": [
+            {
+                "txn_id": "TXN-2MDEA1GM",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b910000.0 from Bank",
+                "dt": "19 Apr, 22:55"
+            },
+            {
+                "txn_id": "TXN-IKP4BDQ8",
+                "type": "CREDIT",
+                "desc": "Received \u20b9100.0 from Deepti",
+                "dt": "19 Apr, 22:56"
+            },
+            {
+                "txn_id": "TXN-47BXSGYY",
+                "type": "CREDIT",
+                "desc": "Received \u20b920.0 from Deepti",
+                "dt": "19 Apr, 22:58"
+            }
+        ],
+        "stats": {
+            "in": 10120.0,
+            "out": 0.0
+        }
+    },
+    "Deepti": {
+        "wallet_balance": 13880.0,
+        "bank_balance": 36000.0,
+        "history": [
+            {
+                "txn_id": "TXN-NFM5DZHB",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b92000.0 from Bank",
+                "dt": "19 Apr, 22:56"
+            },
+            {
+                "txn_id": "TXN-IKP4BDQ8",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9100.0 to Rahul",
+                "dt": "19 Apr, 22:56"
+            },
+            {
+                "txn_id": "TXN-47BXSGYY",
+                "type": "DEBIT",
+                "desc": "Paid \u20b920.0 to Rahul",
+                "dt": "19 Apr, 22:58"
+            },
+            {
+                "txn_id": "TXN-EWPVYTFJ",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b912000.0 from Bank",
+                "dt": "19 Apr, 22:59"
+            }
+        ],
+        "stats": {
+            "in": 14000.0,
+            "out": 120.0
+        }
+    },
+    "Bikash": {
+        "wallet_balance": 500.0,
+        "bank_balance": 49000.0,
+        "history": [
+            {
+                "txn_id": "TXN-PDJDXPAQ",
+                "type": "CREDIT",
+                "desc": "Loaded \u20b91000.0 from Bank",
+                "dt": "19 Apr, 23:04"
+            },
+            {
+                "txn_id": "TXN-T6SRZQYO",
+                "type": "DEBIT",
+                "desc": "Paid \u20b9500.0 to Priyanshu",
+                "dt": "19 Apr, 23:08"
+            }
+        ],
+        "stats": {
+            "in": 1000.0,
+            "out": 500.0
+        }
+    },
+    "Kunal thakur": {
+        "email": "kunal@gmail.com",
+        "phone": "6494649",
+        "wallet_balance": 0.0,
+        "bank_balance": 50000.0,
+        "history": [],
+        "stats": {
+            "in": 0.0,
+            "out": 0.0
+        }
+    },
+    "Kunal": {
+        "email": "kunal@54gmail.com",
+        "phone": "8084045536",
+        "wallet_balance": 0.0,
+        "bank_balance": 50000.0,
+        "history": [],
+        "stats": {
+            "in": 0.0,
+            "out": 0.0
+        }
+    }
+}
