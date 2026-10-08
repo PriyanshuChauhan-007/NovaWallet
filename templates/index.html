@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -106,7 +107,7 @@
                     <p class="field-hint signup-only">Must contain at least 8 characters.</p>
                 </div>
 
-                <button type="submit" class="btn-primary" id="authSubmitBtn">Secure Login</button>
+                <button type="submit" class="btn-primary" id="authSubmitBtn">Sign In to Workspace</button>
             </form>
 
             <div class="security-badge">
@@ -117,21 +118,14 @@
             <!-- Demo quick fill chips -->
             <div class="demo-accounts-wrap" id="demoAccountsWrap">
                 <div class="demo-divider">
-                    <span>QUICK DEMO ACCOUNTS</span>
+                    <span>QUICK DEMO ACCESS</span>
                 </div>
                 <div class="demo-chips">
-                    <button type="button" class="demo-chip" data-user="Priyanshu" data-pass="Nova@123" title="Log in as Priyanshu">
+                    <button type="button" class="demo-chip" data-user="priyanshu" data-pass="Nova@123" title="Log in as Founder Demo">
                         <span class="demo-avatar">P</span>
                         <span class="demo-chip-text">
-                            <strong>Priyanshu</strong>
-                            <small>Peer A (₹75k)</small>
-                        </span>
-                    </button>
-                    <button type="button" class="demo-chip" data-user="Prakhar" data-pass="Nova@123" title="Log in as Prakhar">
-                        <span class="demo-avatar">P</span>
-                        <span class="demo-chip-text">
-                            <strong>Prakhar</strong>
-                            <small>Peer B (₹50k)</small>
+                            <strong>Priyanshu Chauhan (Founder Demo)</strong>
+                            <small>₹45,000.00 Wallet &bull; ₹1,50,000.00 Bank</small>
                         </span>
                     </button>
                 </div>
@@ -154,6 +148,10 @@
                 </div>
             </div>
             <div class="header-right">
+                <button type="button" class="btn-ask-ai-nav" id="navAskAiBtn" title="Ask Nova AI Copilot">
+                    <span class="ai-sparkle">✨</span>
+                    <span>Ask Nova AI</span>
+                </button>
                 <div id="userBadge" class="handle-pill">@user</div>
                 {{ theme_toggle('dashThemeToggle') }}
                 <button type="button" class="icon-btn" id="logoutBtn" aria-label="Logout" title="Logout">
@@ -162,47 +160,130 @@
             </div>
         </header>
 
+        <!-- Executive Summary Strip (Mercury / RazorpayX style) -->
+        <section class="executive-summary-strip" aria-label="Executive Financial Overview">
+            <div class="exec-metric-card" id="cardNetWorth">
+                <div class="exec-metric-head">
+                    <span class="exec-metric-label">Total Net Worth</span>
+                    <span class="exec-badge-sub">Combined</span>
+                </div>
+                <div class="exec-metric-value" id="viewNetWorth">₹0.00</div>
+                <div class="exec-metric-sub">Wallet + Bank + Vaults</div>
+            </div>
+
+            <div class="exec-metric-card" id="cardLiquidWallet">
+                <div class="exec-metric-head">
+                    <span class="exec-metric-label">Liquid Wallet Balance</span>
+                    <span class="exec-badge-live">Live UPI</span>
+                </div>
+                <div class="exec-metric-value" id="viewExecWallet">₹0.00</div>
+                <div class="exec-metric-sub">
+                    <button type="button" class="exec-vpa-chip" id="execVpaChip" title="Click to copy UPI ID">
+                        <span id="execVpaText">priyanshu@novapay</span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="exec-metric-card" id="cardInflow">
+                <div class="exec-metric-head">
+                    <span class="exec-metric-label">30-Day Inflow</span>
+                    <span class="exec-trend-up">&uarr; Inward</span>
+                </div>
+                <div class="exec-metric-value text-emerald" id="viewInflow">+₹0.00</div>
+                <div class="exec-metric-sub">
+                    <span id="viewInflowCount">0 transactions</span>
+                </div>
+            </div>
+
+            <div class="exec-metric-card" id="cardOutflow">
+                <div class="exec-metric-head">
+                    <span class="exec-metric-label">30-Day Outflow</span>
+                    <span class="exec-trend-down">&darr; Burn Rate</span>
+                </div>
+                <div class="exec-metric-value text-rose" id="viewOutflow">-₹0.00</div>
+                <div class="exec-metric-sub">
+                    <span id="viewOutflowCount">0 transactions</span>
+                </div>
+            </div>
+        </section>
+
         <div class="dashboard-grid">
 
             <!-- ================= LEFT / MAIN COLUMN ================= -->
             <div class="dash-col-main">
 
-                <!-- Primary Balance Card -->
-                <section class="balance-card" aria-label="Wallet and Bank Balance">
-                    <div class="balance-header">
-                        <span class="balance-label">Total Wallet Balance</span>
-                        <!-- UPI VPA Pill -->
-                        <div class="vpa-pill" id="vpaPill" title="Click to copy UPI ID">
-                            <span class="vpa-tag">UPI ID</span>
-                            <span id="userVpa" class="vpa-text">user@novapay</span>
-                            <button type="button" class="copy-vpa-btn" id="copyVpaBtn" aria-label="Copy UPI ID" title="Copy UPI ID">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
+                <!-- Primary Balance: Dark Titanium Card & HDFC Core Banking Instrument -->
+                <section class="titanium-card-wrapper" aria-label="Wallet and Bank Balance">
+                    <div class="titanium-card">
+                        <div class="card-glass-sheen"></div>
+                        <div class="card-top-row">
+                            <div class="card-brand-group">
+                                <span class="card-brand-text">NOVA PLATINUM UPI</span>
+                                <span class="card-type-chip">PPI / RBI SECURE</span>
+                            </div>
+                            <div class="card-nfc-icon" title="Contactless Enabled">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                                    <path d="M8.5 16.5a5 5 0 0 1 0-7"></path>
+                                    <path d="M12 19a8.5 8.5 0 0 1 0-12"></path>
+                                    <path d="M15.5 21.5a12 12 0 0 1 0-17"></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Realistic EMV Chip -->
+                        <div class="card-chip-row">
+                            <div class="emv-chip" aria-hidden="true">
+                                <div class="chip-line horiz"></div>
+                                <div class="chip-line vert"></div>
+                            </div>
+                            <div class="vpa-pill" id="vpaPill" title="Click to copy UPI ID">
+                                <span class="vpa-tag">UPI ID</span>
+                                <span id="userVpa" class="vpa-text">priyanshu@novapay</span>
+                                <button type="button" class="copy-vpa-btn" id="copyVpaBtn" aria-label="Copy UPI ID" title="Copy UPI ID">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card-balance-block">
+                            <span class="card-balance-label">SPENDABLE WALLET BALANCE</span>
+                            <h2 id="viewWallet" class="card-balance-amt skeleton" aria-live="polite">₹0.00</h2>
+                        </div>
+
+                        <div class="card-bottom-row">
+                            <div class="card-number-tracked">•••• •••• •••• 9012</div>
+                            <div class="card-holder-group">
+                                <span class="card-holder-title">CARDHOLDER</span>
+                                <span class="card-holder-name" id="cardHolderName">PRIYANSHU CHAUHAN</span>
+                            </div>
+                            <div class="card-expiry-group">
+                                <span class="card-holder-title">VALID THRU</span>
+                                <span class="card-expiry-val">09/29</span>
+                            </div>
                         </div>
                     </div>
 
-                    <h2 id="viewWallet" class="balance-amt skeleton" aria-live="polite">₹0.00</h2>
-
-                    <!-- Realistic Linked Bank Strip -->
-                    <div class="bank-strip">
+                    <!-- Realistic Linked HDFC Core Banking Row -->
+                    <div class="bank-instrument-row">
                         <div class="bank-strip-left">
                             <div class="bank-icon-box">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M8 10v11M12 10v11M16 10v11M20 10v11"></path></svg>
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M8 10v11M12 10v11M16 10v11M20 10v11"></path></svg>
                             </div>
                             <div class="bank-meta">
                                 <div class="bank-title-line">
                                     <span class="bank-title">HDFC Bank &bull;&bull;&bull;&bull; 4821</span>
                                     <span class="verified-pill">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                        Verified
+                                        <span class="status-pulse-dot"></span>
+                                        IMPS / UPI ACTIVE
                                     </span>
                                 </div>
-                                <span class="bank-sub">Linked Core Banking A/C</span>
+                                <span class="bank-sub">Linked Core Banking Reserve</span>
                             </div>
                         </div>
                         <div class="bank-strip-right">
                             <div class="bank-amt-wrap">
-                                <span class="bank-amt-label">Available:</span>
+                                <span class="bank-amt-label">Reserve Balance:</span>
                                 <span id="viewBank" class="bank-amt-val">₹0.00</span>
                             </div>
                             <button type="button" class="bank-eye-btn" id="toggleBankEye" aria-label="Toggle bank balance visibility" title="Mask/Unmask Balance">
@@ -229,7 +310,7 @@
                     </button>
                     <button type="button" class="action-btn" data-panel="requestArea" id="actRequest">
                         <div class="icon-box">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13l7.5 8M6 13h4.5a4.5 4.5 0 0 0 0-9"></path></svg>
                         </div>
                         <span class="action-label">Request</span>
                     </button>
@@ -412,8 +493,69 @@
 
             </div>
 
-            <!-- ================= RIGHT COLUMN (SIDEBAR) ================= -->
+                        <!-- ================= RIGHT COLUMN (SIDEBAR) ================= -->
             <div class="dash-col-side">
+
+                <!-- 0. Nova AI Financial Copilot (Prominent Top Placement, Guaranteed Visible) -->
+                <section id="novaAiSection" class="side-card nova-ai-card" aria-labelledby="aiHeaderTitle" style="display: block !important;">
+                    <div class="ai-card-head">
+                        <div class="ai-title-wrap">
+                            <div class="ai-sparkle-icon">✨</div>
+                            <div>
+                                <h3 class="ai-card-title" id="aiHeaderTitle">Nova AI Financial Analyst</h3>
+                                <div class="ai-status-row">
+                                    <span class="ai-status-dot"></span>
+                                    <span class="ai-model-tag">Gemini 2.5 Flash &bull; Live Ledger Context</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Automatic Live Ledger Audit Box -->
+                    <div class="ai-audit-box" id="aiAuditBox">
+                        <div class="ai-audit-head">
+                            <span class="audit-badge">LIVE LEDGER AUDIT</span>
+                            <span class="audit-timestamp" id="auditTimestamp">Live Sync</span>
+                        </div>
+                        <ul class="ai-audit-list" id="aiAuditList">
+                            <li><span class="bullet-pulse"></span> Analyzing liquidity reserves and net worth...</li>
+                            <li><span class="bullet-pulse"></span> Computing safe discretionary run-rate...</li>
+                            <li><span class="bullet-pulse"></span> Scanning recent settlement categories...</li>
+                        </ul>
+                    </div>
+
+                    <!-- 4 Interactive 1-Click Analysis Action Buttons -->
+                    <div class="ai-actions-grid">
+                        <button type="button" class="ai-prompt-btn" data-query="Full Cashflow Audit">
+                            <span class="ai-btn-icon">📊</span>
+                            <span>Full Cashflow Audit</span>
+                        </button>
+                        <button type="button" class="ai-prompt-btn" data-query="Detect Unusual Spends">
+                            <span class="ai-btn-icon">🛡️</span>
+                            <span>Detect Unusual Spends</span>
+                        </button>
+                        <button type="button" class="ai-prompt-btn" data-query="Calculate Safe Daily Spend">
+                            <span class="ai-btn-icon">🎯</span>
+                            <span>Calculate Safe Daily Spend</span>
+                        </button>
+                        <button type="button" class="ai-prompt-btn" data-query="Tax & Savings Split Advice">
+                            <span class="ai-btn-icon">💡</span>
+                            <span>Tax &amp; Savings Split Advice</span>
+                        </button>
+                    </div>
+
+                    <!-- Interactive Conversation Stream -->
+                    <div class="ai-chat-stream" id="aiChatStream"></div>
+
+                    <!-- Chat Input Form -->
+                    <form id="aiChatForm" class="ai-chat-input-wrap">
+                        <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="Ask anything about transactions, taxes, or balances..." autocomplete="off">
+                        <button type="submit" class="ai-send-btn" id="aiSendBtn" aria-label="Send query">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </form>
+                </section>
+
 
                 <!-- 1. Pending Requests Card -->
                 <section id="requestsSection" class="side-card" aria-labelledby="requestsTitle">
@@ -489,19 +631,46 @@
 
 <!-- 1. QR / Receive Dialog -->
 <dialog id="qrModal" class="modal" closedby="any" aria-labelledby="qrTitle">
-    <div class="modal-card qr-card">
-        <div class="modal-head">
-            <h2 id="qrTitle">Scan to Pay</h2>
-            <form method="dialog"><button class="icon-btn modal-close-btn" type="submit" aria-label="Close">&times;</button></form>
+        <div class="modal-card qr-card">
+            <div class="modal-head">
+                <div>
+                    <h3 id="qrTitle">Scan to Pay via UPI</h3>
+                    <p class="modal-sub">Scan with Google Pay, PhonePe, Paytm, or BHIM</p>
+                </div>
+                <form method="dialog"><button class="icon-btn modal-close-btn" type="submit" aria-label="Close">&times;</button></form>
+            </div>
+
+            <div class="qr-code-presentation">
+                <div id="qrCodeTarget" class="qr-target-box"></div>
+                <div class="qr-vpa-pill">
+                    <span class="vpa-tag">UPI ID</span>
+                    <strong id="qrVpaDisplay">priyanshu@novapay</strong>
+                </div>
+            </div>
+
+            <div class="form-group qr-amt-group">
+                <label for="qrAmountInput" class="field-label">Request Amount (₹, Optional)</label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix">₹</span>
+                    <input type="number" id="qrAmountInput" placeholder="Leave empty for any amount" min="1" step="any">
+                </div>
+                <p class="field-hint">QR code updates dynamically as you type</p>
+            </div>
+
+            <div class="qr-uri-preview-box">
+                <span class="uri-label">NPCI UPI URI:</span>
+                <code id="qrUriPreview">upi://pay?pa=priyanshu@novapay&pn=Priyanshu%20Chauhan&cu=INR</code>
+            </div>
+
+            <div class="modal-actions-row">
+                <button type="button" class="btn-primary" id="downloadQrBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Download QR Sticker
+                </button>
+                <button type="button" class="btn-ghost" id="copyQrUriBtn">Copy UPI Link</button>
+            </div>
         </div>
-        <div class="qr-img-wrap">
-            <img id="qrImg" src="" alt="Dynamic QR code to receive payments">
-        </div>
-        <p class="qr-caption" id="qrVpaCaption">UPI ID: user@novapay</p>
-        <p class="qr-sub">Scan with any UPI application (GPay, PhonePe, Paytm, BHIM)</p>
-        <form method="dialog"><button class="btn-ghost" type="submit">Dismiss</button></form>
-    </div>
-</dialog>
+    </dialog>
 
 <!-- 2. Split Bill Dialog -->
 <dialog id="splitModal" class="modal" closedby="any" aria-labelledby="splitTitle">
@@ -623,5 +792,47 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+    <!-- Vault Deposit / Withdraw Modal -->
+    <dialog id="vaultModal" class="modal" closedby="any" aria-labelledby="vaultModalTitle">
+        <form class="modal-card" id="vaultForm" novalidate>
+            <div class="modal-head">
+                <div>
+                    <h3 id="vaultModalTitle">Manage Vault</h3>
+                    <p class="modal-sub" id="vaultModalSub">Transfer funds between Liquid Wallet and Goal Vault</p>
+                </div>
+                <button type="button" class="icon-btn modal-close-btn" id="vaultCloseBtn" aria-label="Close">&times;</button>
+            </div>
+            <input type="hidden" id="vaultActionType" value="deposit">
+            <input type="hidden" id="vaultTargetId" value="">
+
+            <div class="vault-modal-stats">
+                <div class="v-stat">
+                    <span>Vault Name:</span>
+                    <strong id="vaultModalName">-</strong>
+                </div>
+                <div class="v-stat">
+                    <span>Current Locked:</span>
+                    <strong id="vaultModalCurrent">₹0.00</strong>
+                </div>
+                <div class="v-stat">
+                    <span>Target Goal:</span>
+                    <strong id="vaultModalTarget">₹0.00</strong>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="vaultAmountInput" class="field-label" id="vaultAmountLabel">Transfer Amount (₹)</label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix">₹</span>
+                    <input type="number" id="vaultAmountInput" placeholder="Enter amount in ₹" min="1" step="any" required>
+                </div>
+            </div>
+
+            <div class="modal-actions-row">
+                <button type="submit" class="btn-primary" id="vaultSubmitBtn">Confirm Deposit</button>
+                <button type="button" class="btn-ghost" id="vaultCancelBtn">Cancel</button>
+            </div>
+        </form>
+    </dialog>
 </body>
 </html>

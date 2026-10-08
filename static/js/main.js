@@ -211,11 +211,11 @@
 
             if (isLogin) {
                 authSubtitle.textContent = 'Sign in to your secure digital wallet';
-                authSubmitBtn.textContent = 'Secure Login';
+                authSubmitBtn.textContent = 'Sign In to Workspace';
                 passwordInput.setAttribute('autocomplete', 'current-password');
             } else {
                 authSubtitle.textContent = 'Create your account & link UPI bank';
-                authSubmitBtn.textContent = 'Create Account & Link Bank';
+                authSubmitBtn.textContent = 'Create Free Account';
                 passwordInput.setAttribute('autocomplete', 'new-password');
             }
         }
@@ -242,7 +242,8 @@
         authForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const mode = authForm.dataset.mode;
-            const username = document.getElementById('userInput')?.value.trim();
+            const rawUser = document.getElementById('userInput')?.value.trim() || '';
+            const username = rawUser.toLowerCase();
             const password = document.getElementById('passwordInput')?.value;
 
             if (!username) return showToast('Please enter your username', true);
@@ -253,13 +254,13 @@
                 try {
                     const res = await apiRequest('/login', {
                         method: 'POST',
-                        body: JSON.stringify({ user: username, password })
+                        body: JSON.stringify({ username, password })
                     });
                     handleAuthSuccess(res.access_token, res.username || username);
                 } catch (err) {
                     showToast(err.message, true);
                 } finally {
-                    toggleBtnLoading('authSubmitBtn', false, 'Secure Login');
+                    toggleBtnLoading('authSubmitBtn', false, 'Sign In to Workspace');
                 }
             } else {
                 const email = document.getElementById('emailInput')?.value.trim();
@@ -269,16 +270,16 @@
 
                 toggleBtnLoading('authSubmitBtn', true);
                 try {
-                    const res = await apiRequest('/signup', {
+                    const res = await apiRequest('/register', {
                         method: 'POST',
-                        body: JSON.stringify({ user: username, email, phone, password })
+                        body: JSON.stringify({ username, email, phone, password })
                     });
                     showToast(res.msg || 'Account created successfully!');
                     handleAuthSuccess(res.access_token, res.username || username);
                 } catch (err) {
                     showToast(err.message, true);
                 } finally {
-                    toggleBtnLoading('authSubmitBtn', false, 'Create Account & Link Bank');
+                    toggleBtnLoading('authSubmitBtn', false, 'Create Free Account');
                 }
             }
         });
@@ -386,12 +387,14 @@
     }
 
     function renderDashboard(data) {
-        // Balances
+        // 1. Primary & Bank Balances
         const walletEl = document.getElementById('viewWallet');
         walletEl?.classList.remove('skeleton');
 
         const newWalletBal = Number(data.wallet_balance || 0);
         const newBankBal = Number(data.bank_balance || 0);
+        const vaultsTotal = Number(data.vaults_total || 0);
+        const netWorth = Number(data.net_worth || (newWalletBal + newBankBal + vaultsTotal));
 
         animateValue(walletEl, state.currentWalletBalance, newWalletBal);
 
@@ -399,30 +402,66 @@
         state.currentBankBalance = newBankBal;
         updateBankDisplay();
 
-        // UPI VPA update
+        // 2. Executive Summary Strip
+        const nwEl = document.getElementById('viewNetWorth');
+        if (nwEl) nwEl.textContent = formatINR(netWorth);
+
+        const execWEl = document.getElementById('viewExecWallet');
+        if (execWEl) execWEl.textContent = formatINR(newWalletBal);
+
+        const execVpa = document.getElementById('execVpaText');
+        if (execVpa && data.username) execVpa.textContent = `${data.username}@novapay`;
+
+        const inAmt = Number(data.stats?.in || 0);
+        const outAmt = Number(data.stats?.out || 0);
+        const inEl = document.getElementById('viewInflow');
+        if (inEl) inEl.textContent = `+${formatINR(inAmt)}`;
+
+        const outEl = document.getElementById('viewOutflow');
+        if (outEl) outEl.textContent = `-${formatINR(outAmt)}`;
+
+        const historyList = data.history || [];
+        const inCount = historyList.filter(t => t.type === 'CREDIT').length;
+        const outCount = historyList.filter(t => t.type === 'DEBIT').length;
+        const inCntEl = document.getElementById('viewInflowCount');
+        if (inCntEl) inCntEl.textContent = `${inCount} transaction${inCount === 1 ? '' : 's'}`;
+        const outCntEl = document.getElementById('viewOutflowCount');
+        if (outCntEl) outCntEl.textContent = `${outCount} settlement${outCount === 1 ? '' : 's'}`;
+
+        // 3. Titanium Cardholder Display
+        const chName = document.getElementById('cardHolderName');
+        if (chName) {
+            chName.textContent = (data.username === 'priyanshu') ? 'PRIYANSHU CHAUHAN' : (data.username || 'USER').toUpperCase();
+        }
+
+        // 4. UPI VPA update
         if (data.username) {
             updateUpiVpa(data.username);
         }
 
-        // Analytics & Doughnut Chart
-        const inAmt = Number(data.stats?.in || 0);
-        const outAmt = Number(data.stats?.out || 0);
+        // 5. Analytics & Doughnut Chart
         const txtIn = document.getElementById('txtIn');
         const txtOut = document.getElementById('txtOut');
         if (txtIn) txtIn.textContent = formatINR(inAmt);
         if (txtOut) txtOut.textContent = formatINR(outAmt);
         drawChart(inAmt, outAmt);
 
-        // Category Breakdown
-        renderCategoryBreakdown(data.history || []);
+        // 6. Category Breakdown
+        renderCategoryBreakdown(historyList);
 
-        // Recent Contacts Peers
-        renderRecentPeers(data.history || []);
+        // 7. Dynamic User & Verified Merchant Directory
+        loadDirectory();
 
-        // Requests
+        // 8. Smart Goal Vaults
+        renderVaults(data.vaults || []);
+
+        // 9. Nova AI Live Ledger Audit
+        loadAiInsights();
+
+        // 10. Payment Requests
         renderRequests(data.requests);
 
-        // Transactions History
+        // 11. Transactions History
         renderHistory();
     }
 
@@ -591,52 +630,44 @@
         });
     }
 
-    function renderRecentPeers(history) {
-        // Collect peers from history
-        const peersSet = new Set();
-        history.forEach(t => {
-            if (t.counterparty && t.counterparty !== 'Unknown') {
-                peersSet.add(t.counterparty);
+    async function loadDirectory() {
+        try {
+            const res = await apiRequest('/users/directory');
+            const directory = res.directory || [];
+
+            // 1. In Send Drawer (Recent Contacts & Verified Merchants)
+            const payPeersContainer = document.getElementById('payRecentPeers');
+            if (payPeersContainer) {
+                payPeersContainer.innerHTML = directory.slice(0, 8).map(p => `
+                    <button type="button" class="peer-chip" onclick="window.NovaApp.selectPeer('${escapeHtml(p.username)}')">
+                        <span class="peer-avatar">${escapeHtml(p.avatar || p.username.substring(0, 1))}</span>
+                        <span>@${escapeHtml(p.username)}</span>
+                    </button>
+                `).join('');
             }
-        });
 
-        // Add standard demo fallback peers
-        ['Priyanshu', 'Prakhar', 'Rahul', 'Deepti'].forEach(p => {
-            if (p.toLowerCase() !== (state.activeUser || '').toLowerCase()) {
-                peersSet.add(p);
-            }
-        });
-
-        const peers = Array.from(peersSet).slice(0, 5);
-
-        // 1. In Send panel
-        const payPeersContainer = document.getElementById('payRecentPeers');
-        if (payPeersContainer) {
-            payPeersContainer.innerHTML = peers.map(p => `
-                <button type="button" class="peer-chip" onclick="window.NovaApp.selectPeer('${escapeHtml(p)}')">
-                    <span class="peer-avatar">${escapeHtml(p.substring(0, 1))}</span>
-                    <span>@${escapeHtml(p)}</span>
-                </button>
-            `).join('');
-        }
-
-        // 2. In Right Sidebar
-        const sideList = document.getElementById('quickContactsList');
-        if (sideList) {
-            sideList.innerHTML = peers.map(p => `
-                <div class="contact-row-item" onclick="window.NovaApp.selectPeer('${escapeHtml(p)}')">
-                    <div class="contact-info">
-                        <div class="contact-avatar">${escapeHtml(p.substring(0, 1))}</div>
-                        <div>
-                            <div class="contact-name">${escapeHtml(p)}</div>
-                            <div class="contact-handle">@${escapeHtml(p.toLowerCase())}</div>
+            // 2. In Right Sidebar Quick Contacts
+            const sideList = document.getElementById('quickContactsList');
+            if (sideList) {
+                sideList.innerHTML = directory.map(p => `
+                    <div class="contact-row-item" onclick="window.NovaApp.selectPeer('${escapeHtml(p.username)}')">
+                        <div class="contact-info">
+                            <div class="contact-avatar">${escapeHtml(p.avatar || p.username.substring(0, 1))}</div>
+                            <div>
+                                <div class="contact-name">${escapeHtml(p.name || p.username)}</div>
+                                <div class="contact-handle">@${escapeHtml(p.username.toLowerCase())} &bull; ${escapeHtml(p.category || 'UPI')}</div>
+                            </div>
                         </div>
+                        <button type="button" class="contact-send-btn">Send &rarr;</button>
                     </div>
-                    <button type="button" class="contact-send-btn">Send &rarr;</button>
-                </div>
-            `).join('');
+                `).join('');
+            }
+        } catch (e) {
+            console.warn('Failed to load user directory:', e);
         }
     }
+
+    const renderRecentPeers = loadDirectory;
 
     function selectPeer(username) {
         togglePanel('payArea');
@@ -844,6 +875,213 @@
     // -------------------------------------------------------------------------
     // Receipt Modal & Download
     // -------------------------------------------------------------------------
+    
+    // -------------------------------------------------------------------------
+    // Smart Goal Savings Vaults (Savings Lockers)
+    // -------------------------------------------------------------------------
+    async function loadVaults() {
+        try {
+            const res = await apiRequest('/vaults');
+            renderVaults(res.vaults || []);
+        } catch (e) {
+            console.warn('Failed to load vaults:', e);
+        }
+    }
+
+    function renderVaults(vaults) {
+        const grid = document.getElementById('vaultsGrid');
+        const badge = document.getElementById('vaultCountBadge');
+        if (!grid) return;
+        if (badge) badge.textContent = `${vaults.length} Active Locker${vaults.length === 1 ? '' : 's'}`;
+
+        if (!vaults.length) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 16px; color: var(--text-muted); font-size: 13px;">No active savings vaults.</div>';
+            return;
+        }
+
+        grid.innerHTML = vaults.map(v => `
+            <div class="vault-card" data-vault-id="${v.id}">
+                <div class="vault-card-head">
+                    <span class="vault-title">${escapeHtml(v.name)}</span>
+                    <span class="vault-pct">${v.progress_pct}%</span>
+                </div>
+                <div class="vault-progress-track">
+                    <div class="vault-progress-fill" style="width: ${v.progress_pct}%;"></div>
+                </div>
+                <div class="vault-amounts-row">
+                    <div>
+                        <span style="font-size: 10px; color: var(--text-muted); display: block;">LOCKED</span>
+                        <span class="vault-locked-val">${formatINR(v.balance)}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 10px; color: var(--text-muted); display: block;">TARGET</span>
+                        <span class="vault-target-val">${formatINR(v.target)}</span>
+                    </div>
+                </div>
+                <div class="vault-actions-row">
+                    <button type="button" class="vault-btn-dep" onclick="window.NovaApp.openVaultModal(${v.id}, 'deposit', '${escapeHtml(v.name)}', ${v.balance}, ${v.target})">+ Deposit</button>
+                    <button type="button" class="vault-btn-wdr" onclick="window.NovaApp.openVaultModal(${v.id}, 'withdraw', '${escapeHtml(v.name)}', ${v.balance}, ${v.target})">&minus; Withdraw</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function openVaultModal(vaultId, action, name, balance, target) {
+        const modal = document.getElementById('vaultModal');
+        const titleEl = document.getElementById('vaultModalTitle');
+        const subEl = document.getElementById('vaultModalSub');
+        const nameEl = document.getElementById('vaultModalName');
+        const curEl = document.getElementById('vaultModalCurrent');
+        const tgtEl = document.getElementById('vaultModalTarget');
+        const actTypeInput = document.getElementById('vaultActionType');
+        const targetIdInput = document.getElementById('vaultTargetId');
+        const amtInput = document.getElementById('vaultAmountInput');
+        const submitBtn = document.getElementById('vaultSubmitBtn');
+
+        if (!modal) return;
+        actTypeInput.value = action;
+        targetIdInput.value = vaultId;
+        if (nameEl) nameEl.textContent = name;
+        if (curEl) curEl.textContent = formatINR(balance);
+        if (tgtEl) tgtEl.textContent = formatINR(target);
+        if (amtInput) amtInput.value = '';
+
+        if (action === 'deposit') {
+            if (titleEl) titleEl.textContent = `Deposit to ${name}`;
+            if (subEl) subEl.textContent = 'Lock spendable wallet balance into this savings goal';
+            if (submitBtn) submitBtn.textContent = 'Confirm Deposit';
+        } else {
+            if (titleEl) titleEl.textContent = `Withdraw from ${name}`;
+            if (subEl) subEl.textContent = 'Release locked funds back into your liquid spendable wallet';
+            if (submitBtn) submitBtn.textContent = 'Confirm Withdrawal';
+        }
+
+        if (typeof modal.showModal === 'function') {
+            modal.showModal();
+        } else {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function initVaults() {
+        const form = document.getElementById('vaultForm');
+        const modal = document.getElementById('vaultModal');
+        const closeBtn = document.getElementById('vaultCloseBtn');
+        const cancelBtn = document.getElementById('vaultCancelBtn');
+
+        closeBtn?.addEventListener('click', () => modal?.close());
+        cancelBtn?.addEventListener('click', () => modal?.close());
+
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const action = document.getElementById('vaultActionType')?.value;
+            const vaultId = document.getElementById('vaultTargetId')?.value;
+            const amt = Number(document.getElementById('vaultAmountInput')?.value || 0);
+
+            if (!amt || amt <= 0) return showToast('Please enter a valid amount in ₹', true);
+
+            toggleBtnLoading('vaultSubmitBtn', true);
+            try {
+                const endpoint = action === 'deposit' ? '/vaults/deposit' : '/vaults/withdraw';
+                const res = await apiRequest(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify({ vault_id: vaultId, amount: amt })
+                });
+                modal?.close();
+                showToast(res.msg);
+                if (res.user) {
+                    state.userData = res.user;
+                    renderDashboard(res.user);
+                } else {
+                    await refreshUserData();
+                }
+            } catch (err) {
+                showToast(err.message, true);
+            } finally {
+                toggleBtnLoading('vaultSubmitBtn', false, action === 'deposit' ? 'Confirm Deposit' : 'Confirm Withdrawal');
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Nova AI Financial Copilot (Live Ledger Audit & Interactive Chat)
+    // -------------------------------------------------------------------------
+    async function loadAiInsights() {
+        const auditList = document.getElementById('aiAuditList');
+        const timestamp = document.getElementById('auditTimestamp');
+        if (!auditList) return;
+
+        try {
+            const res = await apiRequest('/ai/insights');
+            const insights = res.insights || [];
+            if (insights.length) {
+                auditList.innerHTML = insights.map(pt => `<li>${escapeHtml(pt)}</li>`).join('');
+            }
+            if (timestamp) {
+                timestamp.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            }
+        } catch (e) {
+            console.warn('AI insights failed:', e);
+        }
+    }
+
+    function initNovaAi() {
+        const chatForm = document.getElementById('aiChatForm');
+        const chatInput = document.getElementById('aiChatInput');
+        const chatStream = document.getElementById('aiChatStream');
+        const navAskBtn = document.getElementById('navAskAiBtn');
+
+        navAskBtn?.addEventListener('click', () => {
+            const section = document.getElementById('novaAiSection');
+            section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            chatInput?.focus();
+        });
+
+        // 4 1-click analysis prompt buttons
+        document.querySelectorAll('.ai-prompt-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const query = btn.dataset.query;
+                if (query) askNovaAi(query);
+            });
+        });
+
+        chatForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = chatInput?.value?.trim();
+            if (!query) return;
+            chatInput.value = '';
+            askNovaAi(query);
+        });
+
+        async function askNovaAi(query) {
+            if (!chatStream) return;
+
+            // Render user bubble
+            const userBubble = document.createElement('div');
+            userBubble.className = 'ai-chat-msg user';
+            userBubble.textContent = query;
+            chatStream.appendChild(userBubble);
+
+            // Render thinking bubble
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'ai-chat-msg ai';
+            aiBubble.innerHTML = '<em>Thinking with live ledger context...</em>';
+            chatStream.appendChild(aiBubble);
+            chatStream.scrollTop = chatStream.scrollHeight;
+
+            try {
+                const res = await apiRequest('/ai/ask', {
+                    method: 'POST',
+                    body: JSON.stringify({ query })
+                });
+                aiBubble.textContent = res.answer || 'Analysis complete.';
+            } catch (err) {
+                aiBubble.textContent = `Analysis error: ${err.message}`;
+            }
+            chatStream.scrollTop = chatStream.scrollHeight;
+        }
+    }
+
     function initReceiptModal() {
         const modal = document.getElementById('receiptModal');
         const copyBtn = document.getElementById('copyTxnIdBtn');
@@ -1419,13 +1657,81 @@
 
     function showReceiveQR() {
         const modal = document.getElementById('qrModal');
-        const qrImg = document.getElementById('qrImg');
-        if (!modal || !qrImg) return;
+        if (!modal) return;
 
-        const payLink = `${window.location.origin}${window.location.pathname}?payTo=${encodeURIComponent(state.activeUser || '')}`;
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payLink)}&color=09090b&bgcolor=ffffff`;
+        const username = state.activeUser || 'priyanshu';
+        const displayName = (username === 'priyanshu') ? 'Priyanshu Chauhan' : username;
+        const vpaDisplay = document.getElementById('qrVpaDisplay');
+        if (vpaDisplay) vpaDisplay.textContent = `${username}@novapay`;
 
-        modal.showModal();
+        const amtInput = document.getElementById('qrAmountInput');
+        if (amtInput) amtInput.value = '';
+
+        function renderQrCode(amt) {
+            const container = document.getElementById('qrCodeTarget');
+            const uriPreview = document.getElementById('qrUriPreview');
+            if (!container) return;
+
+            let uri = `upi://pay?pa=${encodeURIComponent(username)}@novapay&pn=${encodeURIComponent(displayName)}&cu=INR`;
+            if (amt && Number(amt) > 0) {
+                uri += `&am=${encodeURIComponent(Number(amt).toFixed(2))}`;
+            }
+
+            if (uriPreview) uriPreview.textContent = uri;
+            container.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, {
+                    text: uri,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#090d16',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } else {
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}&color=09090b&bgcolor=ffffff`;
+                container.appendChild(img);
+            }
+        }
+
+        renderQrCode();
+
+        if (amtInput) {
+            amtInput.oninput = (e) => renderQrCode(e.target.value);
+        }
+
+        const downloadBtn = document.getElementById('downloadQrBtn');
+        if (downloadBtn) {
+            downloadBtn.onclick = () => {
+                const container = document.getElementById('qrCodeTarget');
+                const canvas = container?.querySelector('canvas');
+                const img = container?.querySelector('img');
+                const src = canvas ? canvas.toDataURL('image/png') : img?.src;
+                if (!src) return showToast('QR not ready for download', true);
+
+                const link = document.createElement('a');
+                link.download = `NovaWallet_UPI_QR_${username}.png`;
+                link.href = src;
+                link.click();
+                showToast('QR sticker downloaded!');
+            };
+        }
+
+        const copyUriBtn = document.getElementById('copyQrUriBtn');
+        if (copyUriBtn) {
+            copyUriBtn.onclick = () => {
+                const uri = document.getElementById('qrUriPreview')?.textContent || '';
+                navigator.clipboard.writeText(uri).then(() => showToast('UPI link copied!'));
+            };
+        }
+
+        if (typeof modal.showModal === 'function') {
+            modal.showModal();
+        } else {
+            modal.style.display = 'flex';
+        }
     }
 
     function checkDeepLinkPay() {
@@ -1654,6 +1960,8 @@
         initFiltersAndSearch();
         initReceiptModal();
         initExport();
+        initVaults();
+        initNovaAi();
         initPanels();
         initSplitBill();
         initDialogLightDismissFallbacks();

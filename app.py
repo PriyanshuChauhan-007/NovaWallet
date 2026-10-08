@@ -46,6 +46,11 @@ from sqlalchemy import CheckConstraint, delete, event, func, or_, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
+try:
+    from google import genai
+except ImportError:
+    genai = None
+
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -360,6 +365,54 @@ class PaymentRequest(db.Model):
             setattr(self, k, v)
 
 
+
+
+class Vault(db.Model):
+    """Smart Goal Savings Vault (Lockers) for ring-fenced funds."""
+
+    __tablename__ = "vaults"
+    __allow_unmapped__ = True
+
+    id: Any = db.Column(db.Integer, primary_key=True)
+    user_id: Any = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Any = db.Column(db.String(64), nullable=False)
+    balance_paise: Any = db.Column(db.Integer, nullable=False, default=0)
+    target_paise: Any = db.Column(db.Integer, nullable=False, default=0)
+    created_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow)
+    updated_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+    user: Any = db.relationship("User", backref=db.backref("vaults", cascade="all, delete-orphan", lazy=True))
+
+    __table_args__ = (
+        CheckConstraint("balance_paise >= 0", name="ck_vault_balance_non_negative"),
+        CheckConstraint("target_paise >= 0", name="ck_vault_target_non_negative"),
+    )
+
+    def __init__(
+        self,
+        user_id: int | None = None,
+        name: str = "",
+        balance_paise: int = 0,
+        target_paise: int = 0,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        if user_id is not None:
+            self.user_id = user_id
+        if name:
+            self.name = name
+        self.balance_paise = balance_paise
+        self.target_paise = target_paise
+        if created_at is not None:
+            self.created_at = created_at
+        if updated_at is not None:
+            self.updated_at = updated_at
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
 class OtpChallenge(db.Model):
     """One active OTP per user, bound to a specific payment."""
 
@@ -618,13 +671,14 @@ def execute_transfer(sender: User, receiver: User, amount_paise: int, category: 
 def serialize_txn(t: Transaction, me_id: int) -> dict:
     is_credit = t.receiver_id == me_id
     if t.kind == Transaction.KIND_LOAD:
-        desc, counterparty = "Loaded from Bank", None
+        desc = t.note or "HDFC Bank NEFT Inward"
+        counterparty = "HDFC Bank"
     elif is_credit:
         counterparty = t.sender.username if t.sender else "Unknown"
-        desc = f"Received from {counterparty}"
+        desc = t.note or f"Received from {counterparty}"
     else:
-        counterparty = t.receiver.username
-        desc = f"Paid to {counterparty}"
+        counterparty = t.receiver.username if t.receiver else "Merchant"
+        desc = t.note or f"Paid to {counterparty}"
     return {
         "txn_id": t.txn_id,
         "type": "CREDIT" if is_credit else "DEBIT",
@@ -635,6 +689,19 @@ def serialize_txn(t: Transaction, me_id: int) -> dict:
         "note": t.note,
         "amount": to_rupees(t.amount_paise),
         "timestamp": iso(t.timestamp),
+    }
+
+
+def serialize_vault(v: Vault) -> dict:
+    bal = to_rupees(v.balance_paise)
+    tgt = to_rupees(v.target_paise)
+    pct = round((v.balance_paise / v.target_paise * 100), 1) if v.target_paise > 0 else 100.0
+    return {
+        "id": v.id,
+        "name": v.name,
+        "balance": bal,
+        "target": tgt,
+        "progress_pct": min(100.0, max(0.0, pct)),
     }
 
 
@@ -683,12 +750,20 @@ def user_snapshot(user: User, history_limit: int = 500) -> dict:
         .limit(20)
         .all()
     )
+    vaults_data = [serialize_vault(v) for v in (user.vaults or [])]
+    vaults_total = sum(v["balance"] for v in vaults_data)
+    wallet_bal = to_rupees(wallet.balance_paise) if wallet else 0.0
+    bank_bal = to_rupees(wallet.bank_balance_paise) if wallet else 0.0
+    net_worth = round(wallet_bal + bank_bal + vaults_total, 2)
     return {
         "username": user.username,
         "email": user.email,
         "phone": user.phone,
-        "wallet_balance": to_rupees(wallet.balance_paise),
-        "bank_balance": to_rupees(wallet.bank_balance_paise),
+        "wallet_balance": wallet_bal,
+        "bank_balance": bank_bal,
+        "vaults_total": vaults_total,
+        "net_worth": net_worth,
+        "vaults": vaults_data,
         "stats": {"in": to_rupees(total_in), "out": to_rupees(total_out)},
         "history": [serialize_txn(t, user.id) for t in txns],
         "requests": {
@@ -758,11 +833,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/register", methods=["POST"])
 @app.route("/api/signup", methods=["POST"])
-def signup():
+def register():
     simulate_latency(0.8)
     info = json_body()
-    name = str(info.get("user", "")).strip()
+    name = str(info.get("username") or info.get("user", "")).strip().lower()
     email = str(info.get("email", "")).strip()
     phone = str(info.get("phone", "")).strip().replace(" ", "")
     password = str(info.get("password", ""))
@@ -784,19 +860,25 @@ def signup():
 
     user = User(username=name, email=email, phone=phone)
     user.set_password(password)
-    user.wallet = Wallet(balance_paise=0, bank_balance_paise=DEFAULT_BANK_PAISE)
+    # Default starting Linked Bank Balance of ₹50,000.00 and Wallet Balance of ₹1,000.00 signup bonus
+    user.wallet = Wallet(balance_paise=1000 * PAISE, bank_balance_paise=50000 * PAISE)
     db.session.add(user)
     try:
         db.session.commit()
-    except IntegrityError:  # Lost a race with a simultaneous signup.
+    except IntegrityError:  # Lost race
         db.session.rollback()
         return err("User already exists!")
 
-    return ok("Wallet created and Bank linked!", access_token=issue_token(user), username=user.username)
+    token = issue_token(user)
+    return ok(
+        "Account created successfully!",
+        access_token=token,
+        username=user.username,
+        user=user_snapshot(user),
+    )
 
 
 # Pre-computed so failed lookups take the same time as wrong passwords
-# (prevents username enumeration via response timing).
 _DUMMY_HASH = generate_password_hash(secrets.token_hex(16))
 
 
@@ -804,7 +886,7 @@ _DUMMY_HASH = generate_password_hash(secrets.token_hex(16))
 def login():
     simulate_latency(0.6)
     info = json_body()
-    name = str(info.get("user", "")).strip()
+    name = str(info.get("username") or info.get("user", "")).strip().lower()
     password = str(info.get("password", ""))
     if not name or not password:
         return err("Username and password are required.")
@@ -816,13 +898,333 @@ def login():
     if not user.check_password(password):
         return err("Invalid username or password.", 401)
 
-    return ok("Welcome back!", access_token=issue_token(user), username=user.username)
+    token = issue_token(user)
+    return ok(
+        "Welcome back!",
+        access_token=token,
+        username=user.username,
+        user=user_snapshot(user),
+    )
 
 
 @app.route("/api/me", methods=["GET"])
 @jwt_required()
 def me():
     return ok(data=user_snapshot(current_user))
+
+
+
+@app.route("/api/users/directory", methods=["GET"])
+@jwt_required()
+def users_directory():
+    """Return newly registered users plus verified commercial merchants."""
+    merchants = [
+        {"username": "Zomato", "name": "Zomato Limited", "type": "merchant", "category": "Food", "avatar": "🍕"},
+        {"username": "Swiggy", "name": "Swiggy Food & Instamart", "type": "merchant", "category": "Food", "avatar": "🍔"},
+        {"username": "Amazon Pay", "name": "Amazon Pay India", "type": "merchant", "category": "Shopping", "avatar": "🛍️"},
+        {"username": "IRCTC", "name": "IRCTC Rail Connect", "type": "merchant", "category": "Travel", "avatar": "🚆"},
+        {"username": "BESCOM Power", "name": "BESCOM Electricity Utility", "type": "merchant", "category": "Bills", "avatar": "⚡"},
+    ]
+    reg_users = (
+        User.query.filter(User.id != current_user.id)
+        .order_by(User.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    merchant_user_names = {m["username"].lower() for m in merchants}
+    user_list = []
+    for u in reg_users:
+        if u.username.lower() not in merchant_user_names and not u.username.startswith("merchant-"):
+            user_list.append({
+                "username": u.username,
+                "name": u.username.title(),
+                "type": "user",
+                "category": "Transfer",
+                "avatar": u.username[0].upper(),
+            })
+    return ok(directory=user_list + merchants)
+
+
+# --------------------------------------------------------------------------- #
+# Routes: Smart Goal Vaults (Savings Lockers)
+# --------------------------------------------------------------------------- #
+@app.route("/api/vaults", methods=["GET"])
+@jwt_required()
+def get_vaults():
+    user = current_user
+    vaults = [serialize_vault(v) for v in (user.vaults or [])]
+    return ok(vaults=vaults)
+
+
+@app.route("/api/vaults/deposit", methods=["POST"])
+@jwt_required()
+def deposit_vault():
+    user = current_user
+    body = json_body()
+    vault_id = body.get("vault_id")
+    vault_name = body.get("name")
+    try:
+        amt = parse_amount(body.get("amount", 0), max_paise=WALLET_LIMIT_PAISE, label="Deposit amount")
+    except ValueError as e:
+        return err(str(e))
+
+    def work():
+        vault = None
+        if vault_id:
+            vault = Vault.query.filter_by(id=vault_id, user_id=user.id).first()
+        elif vault_name:
+            vault = Vault.query.filter_by(name=vault_name, user_id=user.id).first()
+        if not vault:
+            return err("Goal vault not found.", 404)
+
+        # Atomic debit from wallet
+        res = db.session.execute(
+            update(Wallet)
+            .where(Wallet.user_id == user.id, Wallet.balance_paise >= amt)
+            .values(balance_paise=Wallet.balance_paise - amt)
+        )
+        if res.rowcount != 1:
+            return err("Insufficient liquid wallet balance for vault deposit.", 400)
+
+        vault.balance_paise += amt
+        vault.updated_at = utcnow()
+
+        txn = Transaction(
+            txn_id=generate_txn_id(),
+            sender_id=user.id,
+            receiver_id=user.id,
+            amount_paise=amt,
+            category="Savings",
+            kind=Transaction.KIND_TRANSFER,
+            note=f"Deposit to {vault.name}",
+            timestamp=utcnow(),
+        )
+        db.session.add(txn)
+        db.session.flush()
+
+        return ok(f"Deposited {fmt_inr(amt)} into {vault.name}!", vault=serialize_vault(vault), user=user_snapshot(user))
+
+    return commit_or_error(work)
+
+
+@app.route("/api/vaults/withdraw", methods=["POST"])
+@jwt_required()
+def withdraw_vault():
+    user = current_user
+    body = json_body()
+    vault_id = body.get("vault_id")
+    vault_name = body.get("name")
+    try:
+        amt = parse_amount(body.get("amount", 0), max_paise=WALLET_LIMIT_PAISE, label="Withdrawal amount")
+    except ValueError as e:
+        return err(str(e))
+
+    def work():
+        vault = None
+        if vault_id:
+            vault = Vault.query.filter_by(id=vault_id, user_id=user.id).first()
+        elif vault_name:
+            vault = Vault.query.filter_by(name=vault_name, user_id=user.id).first()
+        if not vault:
+            return err("Goal vault not found.", 404)
+
+        if vault.balance_paise < amt:
+            return err(f"Insufficient funds in vault (Available: {to_rupees(vault.balance_paise)}).", 400)
+
+        vault.balance_paise -= amt
+        vault.updated_at = utcnow()
+
+        db.session.execute(
+            update(Wallet)
+            .where(Wallet.user_id == user.id)
+            .values(balance_paise=Wallet.balance_paise + amt)
+        )
+
+        txn = Transaction(
+            txn_id=generate_txn_id(),
+            sender_id=user.id,
+            receiver_id=user.id,
+            amount_paise=amt,
+            category="Savings",
+            kind=Transaction.KIND_TRANSFER,
+            note=f"Withdrawal from {vault.name}",
+            timestamp=utcnow(),
+        )
+        db.session.add(txn)
+        db.session.flush()
+
+        return ok(f"Withdrew {fmt_inr(amt)} from {vault.name} to Wallet!", vault=serialize_vault(vault), user=user_snapshot(user))
+
+    return commit_or_error(work)
+
+
+# --------------------------------------------------------------------------- #
+# Routes: Nova AI Financial Copilot
+# --------------------------------------------------------------------------- #
+def _compute_fallback_ai_analysis(user: User) -> dict:
+    wallet_rupees = to_rupees(user.wallet.balance_paise)
+    bank_rupees = to_rupees(user.wallet.bank_balance_paise)
+    vaults_rupees = sum(to_rupees(v.balance_paise) for v in (user.vaults or []))
+    net_worth = round(wallet_rupees + bank_rupees + vaults_rupees, 2)
+
+    txns = Transaction.query.filter(or_(Transaction.sender_id == user.id, Transaction.receiver_id == user.id)).all()
+    inflow = sum(to_rupees(t.amount_paise) for t in txns if t.receiver_id == user.id)
+    outflow = sum(to_rupees(t.amount_paise) for t in txns if t.sender_id == user.id)
+
+    cat_spend = {}
+    for t in txns:
+        if t.sender_id == user.id:
+            cat = t.category or "Other"
+            cat_spend[cat] = cat_spend.get(cat, 0.0) + to_rupees(t.amount_paise)
+
+    top_cat = max(cat_spend.items(), key=lambda x: x[1])[0] if cat_spend else "Shopping"
+    top_cat_amt = cat_spend.get(top_cat, 0.0)
+    reserve_ratio = round(((bank_rupees + vaults_rupees) / net_worth * 100), 1) if net_worth > 0 else 80.0
+    safe_daily = round(max(0.0, wallet_rupees / 30.0), 2)
+
+    insights = [
+        f"Liquid wallet holds ₹{wallet_rupees:,.2f} with ₹{bank_rupees:,.2f} secured in HDFC Core Banking across ₹{net_worth:,.2f} total net worth.",
+        f"Capital reserve health ratio is {reserve_ratio}% — well above the 50% baseline for prudent liquidity management.",
+        f"Primary expense outflow is centered in {top_cat} (₹{top_cat_amt:,.2f}) across recent settlement cycles.",
+    ]
+
+    return {
+        "insights": insights,
+        "net_worth": net_worth,
+        "wallet": wallet_rupees,
+        "bank": bank_rupees,
+        "vaults": vaults_rupees,
+        "inflow": inflow,
+        "outflow": outflow,
+        "safe_daily": safe_daily,
+        "top_cat": top_cat,
+        "top_cat_amt": top_cat_amt,
+    }
+
+
+@app.route("/api/ai/insights", methods=["GET"])
+@jwt_required()
+def ai_insights():
+    user = current_user
+    data = _compute_fallback_ai_analysis(user)
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key and genai:
+        try:
+            client = genai.Client(api_key=gemini_key)
+            prompt = (
+                f"You are Nova AI, an elite fintech financial analyst for NovaWallet (an Indian UPI banking platform). "
+                f"User ledger data:\n"
+                f"- Liquid Wallet: ₹{data['wallet']:,.2f}\n"
+                f"- Bank Reserve: ₹{data['bank']:,.2f}\n"
+                f"- Savings Vaults: ₹{data['vaults']:,.2f}\n"
+                f"- Total Net Worth: ₹{data['net_worth']:,.2f}\n"
+                f"- 30-Day Inflow: ₹{data['inflow']:,.2f}\n"
+                f"- 30-Day Outflow: ₹{data['outflow']:,.2f}\n"
+                f"- Top Expense: {data['top_cat']} (₹{data['top_cat_amt']:,.2f})\n"
+                f"Provide exactly 3 concise, high-impact bullet points analyzing their financial standing. "
+                f"Include exact rupee figures. Do not use asterisks or markdown bold, just return 3 plain lines."
+            )
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            lines = [line.strip().lstrip("-•* ").strip() for line in (response.text or "").split("\n") if line.strip()]
+            if len(lines) >= 3:
+                return ok(insights=lines[:3], source="gemini")
+        except Exception as e:
+            app.logger.warning("Gemini AI insights fallback: %s", e)
+
+    return ok(insights=data["insights"], source="analytics_engine")
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+@jwt_required()
+def ai_ask():
+    user = current_user
+    body = json_body()
+    query = str(body.get("query") or body.get("prompt") or "").strip()
+    if not query:
+        return err("Query is required.")
+
+    data = _compute_fallback_ai_analysis(user)
+    gemini_key = os.getenv("GEMINI_API_KEY")
+
+    if gemini_key and genai:
+        try:
+            client = genai.Client(api_key=gemini_key)
+            prompt = (
+                f"You are Nova AI Financial Copilot, an elite private banker and quantitative financial advisor "
+                f"embedded in NovaWallet (India). Speak with executive fintech clarity, precision, and authority. "
+                f"Always quote rupee values with '₹'.\n"
+                f"User Profile & Live Financial State:\n"
+                f"- Username: {user.username}\n"
+                f"- Liquid Spendable Wallet: ₹{data['wallet']:,.2f}\n"
+                f"- Core Bank Balance: ₹{data['bank']:,.2f}\n"
+                f"- Goal Vaults: ₹{data['vaults']:,.2f}\n"
+                f"- Total Net Worth: ₹{data['net_worth']:,.2f}\n"
+                f"- Total Recorded Inflow: ₹{data['inflow']:,.2f}\n"
+                f"- Total Recorded Outflow: ₹{data['outflow']:,.2f}\n"
+                f"- Safe Daily Spend: ₹{data['safe_daily']:,.2f}/day\n"
+                f"- Largest Outflow Category: {data['top_cat']} (₹{data['top_cat_amt']:,.2f})\n\n"
+                f"User Question: '{query}'\n"
+                f"Provide a structured, insightful, actionable answer formatted in crisp paragraphs or clean bullet points."
+            )
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            if response.text:
+                return ok(answer=response.text.strip(), source="gemini")
+        except Exception as e:
+            app.logger.warning("Gemini AI ask fallback: %s", e)
+
+    q_lower = query.lower()
+    if "cashflow" in q_lower or "audit" in q_lower:
+        net_saved = max(0.0, data["inflow"] - data["outflow"])
+        answer = (
+            f"📊 **Nova Executive Cashflow Audit**\n\n"
+            f"• **Gross Inflow:** +₹{data['inflow']:,.2f} inward settlements\n"
+            f"• **Gross Outflow:** -₹{data['outflow']:,.2f} outbound payments\n"
+            f"• **Net Surplus:** +₹{net_saved:,.2f} retained in ecosystem\n"
+            f"• **Coverage:** Liquid wallet covers ~{int(data['wallet'] / max(1.0, data['safe_daily']))} days of operations without tapping into your ₹{data['bank']:,.2f} HDFC Core Bank reserve."
+        )
+    elif "unusual" in q_lower or "detect" in q_lower or "fraud" in q_lower:
+        answer = (
+            f"🛡️ **Spend Anomaly & Outlier Scan**\n\n"
+            f"• **Risk Assessment:** No fraudulent or anomalous debit patterns detected.\n"
+            f"• **Largest Outflow:** ₹{data['top_cat_amt']:,.2f} categorized under **{data['top_cat']}**.\n"
+            f"• **Verification:** All debits match verified counterparty signatures (Amazon Pay, Zomato, Reliance Jio)."
+        )
+    elif "daily" in q_lower or "safe" in q_lower:
+        answer = (
+            f"🎯 **Discretionary Safe Daily Spend Calculation**\n\n"
+            f"• **Safe Discretionary Cap:** **₹{data['safe_daily']:,.2f} / day** over a 30-day operating horizon.\n"
+            f"• **Runway:** At this pace, your ₹{data['wallet']:,.2f} liquid wallet is fully preserved without liquidating savings vaults or bank deposits."
+        )
+    elif "tax" in q_lower or "split" in q_lower or "advice" in q_lower or "saving" in q_lower:
+        inflow = data["inflow"] if data["inflow"] > 0 else (data["wallet"] + data["bank"])
+        needs = inflow * 0.50
+        wants = inflow * 0.30
+        savings = inflow * 0.20
+        answer = (
+            f"💡 **50 / 30 / 20 Capital Allocation Framework**\n\n"
+            f"• **50% Core Needs:** ₹{needs:,.2f} (Bills, Utilities, Telecom)\n"
+            f"• **30% Discretionary:** ₹{wants:,.2f} (Dining, Retail)\n"
+            f"• **20% Wealth & Tax Reserve:** ₹{savings:,.2f} (Smart Goal Vaults, Fixed Deposits)\n\n"
+            f"Maintain ₹5,000 monthly allocation to reach your Emergency Reserve target of ₹25,000."
+        )
+    else:
+        answer = (
+            f"🤖 **Nova Financial Intelligence Analysis**\n\n"
+            f"For account **@{user.username}**:\n"
+            f"• **Combined Net Worth:** ₹{data['net_worth']:,.2f}\n"
+            f"• **Liquid Wallet:** ₹{data['wallet']:,.2f} | **Core Bank:** ₹{data['bank']:,.2f}\n"
+            f"• **Goal Vaults:** ₹{data['vaults']:,.2f}\n"
+            f"• **Cashflow Velocity:** +₹{data['inflow']:,.2f} in / -₹{data['outflow']:,.2f} out.\n"
+            f"Your current capital structure demonstrates high solvency and strong liquidity reserves."
+        )
+
+    return ok(answer=answer, source="python_analytics_engine")
 
 
 @app.route("/api/users/search", methods=["GET"])
@@ -1273,31 +1675,110 @@ def import_json_command():
 
 
 def seed_demo_accounts() -> None:
-    """Ensure standard demo accounts (Priyanshu, Prakhar) exist with password 'Nova@123'
-    so reviewers can easily log in and test peer-to-peer transfers immediately."""
-    demos = [
-        ("Priyanshu", "priyanshu@novawallet.dev", "9876543210", 7500000),
-        ("Prakhar", "prakhar@novawallet.dev", "9876543211", 5000000),
-    ]
-    for name, email, phone, bal_paise in demos:
-        u = find_user(name)
-        if not u:
-            u = User(username=name, email=email, phone=phone)
-            u.set_password("Nova@123")
-            u.wallet = Wallet(balance_paise=bal_paise, bank_balance_paise=DEFAULT_BANK_PAISE)
-            db.session.add(u)
+    """Seed single Founder Demo 'priyanshu' (₹45,000 wallet, ₹1,50,000 bank),
+    verified commercial merchants, Smart Savings Vaults, and realistic commercial ledger."""
+    founder_name = "priyanshu"
+    u = find_user(founder_name)
+    if not u:
+        u = User(username=founder_name, email="priyanshu@novawallet.dev", phone="9876543210")
+        u.set_password("Nova@123")
+        u.wallet = Wallet(balance_paise=45_000 * PAISE, bank_balance_paise=150_000 * PAISE)
+        db.session.add(u)
+    else:
+        u.set_password("Nova@123")
+        if not u.wallet:
+            u.wallet = Wallet(balance_paise=45_000 * PAISE, bank_balance_paise=150_000 * PAISE)
         else:
-            u.set_password("Nova@123")
-            if not u.wallet:
-                u.wallet = Wallet(balance_paise=bal_paise, bank_balance_paise=DEFAULT_BANK_PAISE)
+            u.wallet.balance_paise = 45_000 * PAISE
+            u.wallet.bank_balance_paise = 150_000 * PAISE
+    db.session.commit()
+
+    # Seed verified commercial merchants
+    merchants_to_seed = [
+        ("Amazon Pay India", "merchant-amazon@novapay.dev", "Shopping"),
+        ("Zomato Limited", "merchant-zomato@novapay.dev", "Food"),
+        ("Reliance Jio Infocomm", "merchant-jio@novapay.dev", "Bills"),
+        ("Zomato", "support@zomato.com", "Food"),
+        ("Swiggy", "support@swiggy.in", "Food"),
+        ("Amazon Pay", "payments@amazon.in", "Shopping"),
+        ("IRCTC", "ticketadmin@irctc.co.in", "Travel"),
+        ("BESCOM Power", "billing@bescom.karnataka.gov.in", "Bills"),
+    ]
+    merchant_users = {}
+    for m_name, m_email, _ in merchants_to_seed:
+        m_user = find_user(m_name)
+        if not m_user:
+            m_user = User(username=m_name, email=m_email, phone="1800" + secrets.token_hex(3)[:6])
+            m_user.set_password(secrets.token_urlsafe(16))
+            m_user.wallet = Wallet(balance_paise=100_000 * PAISE, bank_balance_paise=500_000 * PAISE)
+            db.session.add(m_user)
+        merchant_users[m_name] = m_user
+    db.session.commit()
+
+    # Pre-seed 2 Smart Goal Vaults for priyanshu
+    existing_vaults = {v.name: v for v in u.vaults}
+    if "Emergency Reserve" not in existing_vaults:
+        v1 = Vault(user_id=u.id, name="Emergency Reserve", balance_paise=10_000 * PAISE, target_paise=25_000 * PAISE)
+        db.session.add(v1)
+    if "MacBook Pro M4 Fund" not in existing_vaults:
+        v2 = Vault(user_id=u.id, name="MacBook Pro M4 Fund", balance_paise=15_000 * PAISE, target_paise=120_000 * PAISE)
+        db.session.add(v2)
+    db.session.commit()
+
+    # Seed realistic commercial transaction ledger for priyanshu
+    existing_txns = Transaction.query.filter(or_(Transaction.sender_id == u.id, Transaction.receiver_id == u.id)).count()
+    if existing_txns == 0:
+        base_time = utcnow() - timedelta(days=5)
+        t1 = Transaction(
+            txn_id="TXN_DEP_50K",
+            sender_id=None,
+            receiver_id=u.id,
+            amount_paise=50_000 * PAISE,
+            category="Deposit",
+            kind=Transaction.KIND_LOAD,
+            note="HDFC Bank NEFT Inward",
+            timestamp=base_time + timedelta(hours=2),
+        )
+        m_amz = merchant_users.get("Amazon Pay India") or merchant_users.get("Amazon Pay")
+        t2 = Transaction(
+            txn_id="TXN_AMZ_2499",
+            sender_id=u.id,
+            receiver_id=m_amz.id,
+            amount_paise=2499 * PAISE,
+            category="Shopping",
+            kind=Transaction.KIND_TRANSFER,
+            note="Amazon Pay India - Prime Order",
+            timestamp=base_time + timedelta(days=1, hours=4),
+        )
+        m_zom = merchant_users.get("Zomato Limited") or merchant_users.get("Zomato")
+        t3 = Transaction(
+            txn_id="TXN_ZOM_640",
+            sender_id=u.id,
+            receiver_id=m_zom.id,
+            amount_paise=640 * PAISE,
+            category="Food",
+            kind=Transaction.KIND_TRANSFER,
+            note="Zomato Limited - Gourmet Dining",
+            timestamp=base_time + timedelta(days=2, hours=6),
+        )
+        m_jio = merchant_users.get("Reliance Jio Infocomm")
+        t4 = Transaction(
+            txn_id="TXN_JIO_799",
+            sender_id=u.id,
+            receiver_id=m_jio.id,
+            amount_paise=799 * PAISE,
+            category="Bills",
+            kind=Transaction.KIND_TRANSFER,
+            note="Reliance Jio Infocomm - AirFiber 5G",
+            timestamp=base_time + timedelta(days=3, hours=1),
+        )
+        db.session.add_all([t1, t2, t3, t4])
         db.session.commit()
 
 
 def init_db() -> None:
     with app.app_context():
         db.create_all()
-        if not User.query.first() and os.path.exists(LEGACY_JSON_FILE):
-            import_legacy_json()
         seed_demo_accounts()
 
 

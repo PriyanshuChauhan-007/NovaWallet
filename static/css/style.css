@@ -1996,3 +1996,835 @@ dialog.modal[open] {
         transition-duration: 0.001ms !important;
     }
 }
+
+
+/* ==========================================================================
+   Fintech Executive UI Refactor (Mercury / Stripe / RazorpayX Aesthetic)
+   ========================================================================== */
+
+/* 1. Auth Mode Field Visibility */
+.auth-form[data-mode="login"] .signup-only,
+.auth-form.login-mode .signup-only,
+form#authForm[data-mode="login"] .signup-only {
+    display: none !important;
+}
+
+.auth-form[data-mode="signup"] .signup-only,
+.auth-form.signup-mode .signup-only,
+form#authForm[data-mode="signup"] .signup-only {
+    display: block !important;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+/* 2. Flat High-Contrast Crisp Primary Button (Zero Neon Glow) */
+.btn-primary {
+    background: #10b981 !important;
+    color: #022c22 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    text-shadow: none !important;
+    transition: background-color 0.15s ease, transform 0.1s ease !important;
+}
+
+.btn-primary:hover {
+    background: #059669 !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-primary:active {
+    transform: scale(0.98) !important;
+}
+
+/* Nav Ask Nova AI Button */
+.btn-ask-ai-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-ask-ai-nav:hover {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    transform: translateY(-1px);
+}
+
+.ai-sparkle {
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   Mercury / RazorpayX Executive Summary Strip
+   ========================================================================== */
+.executive-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 0 4px;
+}
+
+.exec-metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card, 12px);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 104px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.exec-metric-card:hover {
+    border-color: var(--border-hover, rgba(255, 255, 255, 0.15));
+    transform: translateY(-1px);
+}
+
+.exec-metric-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exec-metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.exec-badge-sub {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted);
+    border-radius: 4px;
+}
+
+.exec-badge-live {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.exec-trend-up {
+    font-size: 10px;
+    font-weight: 700;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.exec-trend-down {
+    font-size: 10px;
+    font-weight: 700;
+    color: #f43f5e;
+    background: rgba(244, 63, 94, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.exec-metric-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin: 6px 0;
+    font-family: var(--font-display, inherit);
+}
+
+.exec-metric-value.text-emerald {
+    color: #10b981;
+}
+
+.exec-metric-value.text-rose {
+    color: #f43f5e;
+}
+
+.exec-metric-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.exec-vpa-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.exec-vpa-chip:hover {
+    color: var(--text);
+    border-color: #10b981;
+}
+
+@media (max-width: 900px) {
+    .executive-summary-strip {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 540px) {
+    .executive-summary-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   Dark Titanium Metal Virtual Card & HDFC Instrument
+   ========================================================================== */
+.titanium-card-wrapper {
+    margin-bottom: 24px;
+}
+
+.titanium-card {
+    position: relative;
+    width: 100%;
+    min-height: 210px;
+    background: radial-gradient(circle at 80% 20%, #1e293b 0%, #090d16 75%, #05070c 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 22px 24px;
+    color: #ffffff;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card-glass-sheen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.02) 100%);
+    pointer-events: none;
+}
+
+.card-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+}
+
+.card-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-brand-text {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #f1f5f9;
+}
+
+.card-type-chip {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #94a3b8;
+}
+
+.card-nfc-icon {
+    color: #94a3b8;
+    opacity: 0.8;
+}
+
+.card-chip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0 6px;
+    z-index: 1;
+}
+
+/* Realistic Gold EMV Chip */
+.emv-chip {
+    position: relative;
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 40%, #aa771c 100%);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    overflow: hidden;
+}
+
+.emv-chip .chip-line.horiz {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.emv-chip .chip-line.vert {
+    position: absolute;
+    left: 45%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.card-balance-block {
+    margin: 6px 0;
+    z-index: 1;
+}
+
+.card-balance-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.card-balance-amt {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    margin: 0;
+    font-family: var(--font-display, inherit);
+}
+
+.card-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 1;
+    margin-top: 8px;
+}
+
+.card-number-tracked {
+    font-family: monospace;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: #94a3b8;
+}
+
+.card-holder-group, .card-expiry-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-holder-title {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #64748b;
+}
+
+.card-holder-name {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #e2e8f0;
+}
+
+.card-expiry-val {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+/* HDFC Core Banking Row directly beneath Titanium Card */
+.bank-instrument-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    padding: 14px 20px;
+}
+
+.status-pulse-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+/* ==========================================================================
+   Smart Goal Savings Vaults Section
+   ========================================================================== */
+.vaults-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card, 14px);
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.vault-count-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-radius: 6px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.vaults-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+    .vaults-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.vault-card {
+    background: var(--surface-subtle, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.vault-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.vault-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.vault-pct {
+    font-size: 12px;
+    font-weight: 700;
+    color: #10b981;
+}
+
+.vault-progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.vault-progress-fill {
+    height: 100%;
+    background: #10b981;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.vault-amounts-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 14px;
+}
+
+.vault-locked-val {
+    font-weight: 800;
+    color: var(--text);
+}
+
+.vault-target-val {
+    color: var(--text-muted);
+}
+
+.vault-actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+.vault-btn-dep {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.vault-btn-dep:hover {
+    background: #10b981;
+    color: #022c22;
+}
+
+.vault-btn-wdr {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.vault-btn-wdr:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Nova AI Financial Copilot Panel (Right Sidebar Top Placement)
+   ========================================================================== */
+#novaAiSection.nova-ai-card {
+    display: block !important;
+    background: var(--surface);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-card, 14px);
+    padding: 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+}
+
+.ai-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.ai-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-sparkle-icon {
+    font-size: 18px;
+}
+
+.ai-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0;
+}
+
+.ai-status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.ai-status-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+}
+
+.ai-model-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.ai-audit-box {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.ai-audit-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.audit-badge {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #10b981;
+}
+
+.audit-timestamp {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.ai-audit-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ai-audit-list li {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.45;
+    position: relative;
+    padding-left: 14px;
+}
+
+.ai-audit-list li::before {
+    content: "•";
+    position: absolute;
+    left: 2px;
+    color: #10b981;
+    font-weight: bold;
+}
+
+.ai-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.ai-prompt-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+}
+
+.ai-prompt-btn:hover {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.ai-btn-icon {
+    font-size: 13px;
+}
+
+.ai-chat-stream {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.ai-chat-msg {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.ai-chat-msg.user {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    align-self: flex-end;
+    max-width: 90%;
+    color: var(--text);
+}
+
+.ai-chat-msg.ai {
+    background: rgba(16, 185, 129, 0.07);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    align-self: flex-start;
+    color: var(--text);
+    white-space: pre-wrap;
+}
+
+.ai-chat-input-wrap {
+    display: flex;
+    gap: 8px;
+    position: relative;
+}
+
+.ai-chat-input {
+    flex: 1;
+    padding: 9px 12px;
+    background: var(--surface-subtle, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.ai-chat-input:focus {
+    border-color: #10b981;
+}
+
+.ai-send-btn {
+    padding: 0 14px;
+    background: #10b981;
+    color: #022c22;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.ai-send-btn:hover {
+    background: #059669;
+}
+
+/* ==========================================================================
+   Real Scannable UPI QR Modal Styles
+   ========================================================================== */
+.qr-code-presentation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-target-box {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-target-box img, .qr-target-box canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.qr-vpa-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 4px 10px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #0f172a;
+}
+
+.qr-uri-preview-box {
+    margin: 10px 0 16px;
+    padding: 8px 12px;
+    background: var(--surface-subtle, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11px;
+    overflow-x: auto;
+}
+
+.qr-uri-preview-box .uri-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.qr-uri-preview-box code {
+    font-family: monospace;
+    color: #10b981;
+    word-break: break-all;
+}
+
+.vault-modal-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 16px;
+}
+
+.vault-modal-stats .v-stat {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+}
+
+.vault-modal-stats .v-stat span {
+    color: var(--text-muted);
+}
+
+.vault-modal-stats .v-stat strong {
+    color: var(--text);
+    margin-top: 2px;
+}
