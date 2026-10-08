@@ -1,252 +1,92 @@
-# 💎 NovaWallet — Tier-1 Neo-Banking & Digital Wallet Platform
+# NovaWallet
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3.1.3-black?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20(ACID)-red?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
-[![JWT](https://img.shields.io/badge/Auth-Flask--JWT--Extended-orange?logo=jsonwebtokens&logoColor=white)](https://flask-jwt-extended.readthedocs.io/)
-[![Frontend](https://img.shields.io/badge/UI-Vanilla%20ES6%2B%20%7C%20CSS3-emerald?logo=javascript&logoColor=white)](https://developer.mozilla.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.1.3-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
+[![JWT](https://img.shields.io/badge/Auth-Flask--JWT-F5A623?logo=jsonwebtokens&logoColor=white)](https://flask-jwt-extended.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen?logo=pytest&logoColor=white)](#-automated-testing-suite)
-[![Deploy on Render](https://img.shields.io/badge/Deploy-Render%20Cloud-46E3B7?logo=render&logoColor=white)](render.yaml)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)](test_fintech_endpoints.py)
 
-> **NovaWallet** is a production-grade, hyper-responsive Tier-1 Neo-Banking & Digital Wallet application engineered with the precision, security, and fluid UX inspired by **CRED, Google Pay, Jupiter, and RazorpayX**.
+A full-stack digital wallet and payments web application built with Python (Flask) and vanilla JavaScript.
 
-Designed and built from the ground up by **[Priyanshu Chauhan](https://github.com/PriyanshuChauhan-007)**.
+NovaWallet simulates a modern consumer payments app with peer-to-peer transfers, virtual card management, utility bill payments, interactive scratch-card cashback rewards, and goal-based savings vaults. It was built to explore how consumer fintech applications handle core transactional workflows, balance consistency, and state management.
 
----
-
-## 📑 Table of Contents
-
-- [✨ Overview](#-overview)
-- [🌟 Key Architectural Pillars & Features](#-key-architectural-pillars--features)
-  - [1. 💳 Titanium Virtual Debit Card & Neo-Controls (Jupiter & RazorpayX)](#1--titanium-virtual-debit-card--neo-controls-jupiter--razorpayx)
-  - [2. 🎁 CRED-Style Mystery Scratch Cards & Rewards Engine](#2--cred-style-mystery-scratch-cards--rewards-engine)
-  - [3. ⚡ BBPS Utility BillPay Engine (Bharat Bill Payment System)](#3--bbps-utility-billpay-engine-bharat-bill-payment-system)
-  - [4. 🔒 Jupiter Smart Vaults (Goal Lockers)](#4--jupiter-smart-vaults-goal-lockers)
-  - [5. 🤖 Nova AI Financial Advisor & Copilot](#5--nova-ai-financial-advisor--copilot)
-  - [6. 🔄 Real-Time Multi-Tab Sync & Notification Hub](#6--real-time-multi-tab-sync--notification-hub)
-  - [7. 🌓 Full-Spectrum Adaptive Light & Dark Theme](#7--full-spectrum-adaptive-light--dark-theme)
-  - [8. 🛡️ Enterprise Security & ACID Financial Ledger](#8--enterprise-security--acid-financial-ledger)
-- [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
-- [🚀 Quick Demo Credentials](#-quick-demo-credentials)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📋 Complete API Reference](#-complete-api-reference)
-- [💻 Getting Started & Local Installation](#-getting-started--local-installation)
-- [🧪 Automated Testing Suite](#-automated-testing-suite)
-- [☁️ Production Deployment (Render)](#️-production-deployment-render)
-- [📂 Project Directory Structure](#-project-directory-structure)
-- [📄 License & Author](#-license--author)
+**Live Demo:** [https://novawallet-x6o5.onrender.com/](https://novawallet-x6o5.onrender.com/)
 
 ---
 
-## ✨ Overview
+## Features
 
-NovaWallet combines modern fintech engineering with an uncompromising, aesthetic-first interface. Built without heavy frontend framework overhead, it leverages high-performance **Vanilla ES6+** and **Vanilla CSS3** to achieve 60fps micro-animations, glassmorphism, instant UI feedback, and sub-10ms response times.
+### Payments & Transaction Ledger
+- **Peer-to-Peer Transfers**: Send money instantly to any registered user by username.
+- **Inward Bank Funding**: Add funds to the wallet from a linked core bank account.
+- **Payment Requests**: Request money from other users with accept/decline flows.
+- **Integer-Paise Accounting**: All balances and transactions are stored internally as integer paise (`₹1.00 = 100 paise`) to prevent floating-point rounding errors common in financial calculations.
+- **Atomic Transfers**: Database transactions lock accounts in deterministic order (`sorted([sender_id, receiver_id])`) to prevent deadlocks and ensure either both accounts update or neither does.
 
-The backend is powered by **Flask 3.1**, **SQLAlchemy 2.0**, and **Flask-JWT-Extended**, enforcing bank-grade data integrity through strict **integer-paise accounting**, deadlock-free row locking, and atomic state rollbacks.
+### Virtual Debit Card Controls
+- **Instant Freeze / Unfreeze**: Freeze the card with one click. When frozen, transfers and bill payments are blocked on both the client and server.
+- **Reveal Card Details**: View the unmasked 16-digit card number and 3-digit CVV on demand with a quick-copy utility.
+- **Daily Spend Limit**: Adjust a daily transaction limit slider (`₹5,000` to `₹2,00,000`). Updates are visually instant, debounced to the server, and enforced on all outgoing transactions.
+- **Switch Linked Bank**: Toggle the primary funding source between HDFC Bank and ICICI Bank.
 
----
+### Rewards & Cashback
+- **Interactive Scratch Cards**: HTML5 canvas scratch cards with particle dust effects. Once scratched past a threshold, cashback is credited directly to the wallet balance.
+- **Realistic Merchant Cashbacks**: Scratch cards reference everyday merchants like Swiggy, Zomato, Amazon Pay, and Blinkit.
 
-## 🌟 Key Architectural Pillars & Features
+### Utility Bill Payments (BBPS Simulation)
+- Pay utility bills across multiple categories: Electricity, Mobile Recharge, FASTag, Broadband, and Credit Card.
+- Bill fetch simulation using operator and consumer account number.
+- 4-digit UPI MPIN confirmation (`1234`) required before money is debited.
+- Successful bill payments automatically unlock bonus scratch cards.
 
-### 1. 💳 Titanium Virtual Debit Card & Neo-Controls (Jupiter & RazorpayX)
-- **Instant Kill-Switch Freeze / Unfreeze**: One-tap toggle that updates card security status with real-time UI frosted-glass overlay. Transactions and bill payments are instantly rejected on the server if attempted while frozen.
-- **Biometric-Grade Credential Reveal**: Securely decrypts and reveals the 16-digit card number (PAN) and 3-digit CVV on demand with a 1-click clipboard copy utility.
-- **Dynamic Daily Spend Cap**: Real-time slider (`₹5,000` to `₹2,00,000` in ₹5,000 steps) with instant visual feedback, debounced API persistence, and server-side transfer enforcement.
-- **Primary Bank Instrument Switcher**: 1-click toggling between linked core accounts (HDFC Core Banking vs. ICICI Bank).
+### Smart Savings Vaults
+- Create ring-fenced savings goals (e.g., Emergency Reserve, Tech Fund).
+- Deposit money into vaults or withdraw it back to the wallet anytime.
+- Visual progress bars track current savings against the target goal.
 
-### 2. 🎁 CRED-Style Mystery Scratch Cards & Rewards Engine
-- **HTML5 Canvas Physical Scratching**: Interactive coin scratch simulation with real-time particle dust physics and dynamic scratch-percentage detection.
-- **Confetti Celebration**: Canvas confetti burst upon unlocking mystery cashback rewards.
-- **Direct-to-Wallet Cashback**: Real cash credit deposited atomically into the user's liquid wallet ledger.
-- **Commercial Merchant Ecosystem**: Authentic merchant cashbacks inspired by Indian commerce (Swiggy, Zomato, Amazon Pay, Blinkit, Uber, Starbucks).
+### Financial Summary & AI Insights
+- Real-time breakdown of liquid balance, bank funds, vault savings, and net worth.
+- Expenditure category chart powered by Chart.js.
+- Automated financial health analysis (reserve ratios and top spending categories).
+- Natural language query box powered by Google Gemini (with rule-based fallback).
 
-### 3. ⚡ BBPS Utility BillPay Engine (Bharat Bill Payment System)
-- **Multi-Category Hub**: Instant payment settlement for **Electricity, Mobile 5G, FASTag, Broadband, and Credit Cards**.
-- **1-Click Bill Fetch**: Simulates Bharat BillPay service operator queries with realistic consumer numbers and dues.
-- **4-Digit UPI MPIN Security**: Cryptographically verified MPIN challenge (`1234`) before authorizing atomic debits.
-- **Automated Reward Generation**: Every eligible bill payment auto-generates a surprise scratch card reward.
-
-### 4. 🔒 Jupiter Smart Vaults (Goal Lockers)
-- **Ring-Fenced Savings Lockers**: Isolate funds into specific goals (e.g. *Emergency Reserve*, *MacBook Pro M4 Fund*).
-- **Goal Progress Trackers**: Animated percentage indicators showing progress against target savings.
-- **Zero-Leakage Mechanics**: Atomic transfers between liquid wallet balance and locked vaults with strict non-negative check constraints.
-
-### 5. 🤖 Nova AI Financial Advisor & Copilot
-- **Automated Liquidity & Reserve Health**: Algorithmic scoring of capital reserve ratios, emergency cover health, and category spending distributions.
-- **Google Gemini 2.5/Flash AI Integration**: Natural language copilot that analyzes ledger context to answer conversational queries (e.g., *"How much did I spend on food this month?"*, *"What's my burn rate?"*).
-- **Graceful Offline Heuristics**: Seamlessly falls back to deterministic algorithmic rules if no Gemini API key is configured.
-
-### 6. 🔄 Real-Time Multi-Tab Sync & Notification Hub
-- **Multi-Tab State Synchronization**: Automated polling heartbeat (`/api/sync`) ensuring balance changes, notifications, and card states update across all open tabs simultaneously without manual page refreshes.
-- **Real-Time Notification Feed**: Interactive bell modal with unread badge counter, timestamped audit events (CREDIT, DEBIT, REWARD, SECURITY), and 1-click "Mark All Read".
-
-### 7. 🌓 Full-Spectrum Adaptive Light & Dark Theme
-- **Theme Engine**: Complete HSL-based design token architecture (`var(--surface)`, `var(--primary)`, `var(--text)`, etc.).
-- **Zero Contrast Degradation**: Guaranteed 100% text contrast and readability in both Dark and Light modes across all badges, modals, charts, and input fields.
-- **Persistent Preference**: Remembers the selected theme in `localStorage`.
-
-### 8. 🛡️ Enterprise Security & ACID Financial Ledger
-- **Integer-Paise Accounting**: All balances and transactions are stored internally as integer paise (`₹1.00 = 100 paise`), mathematically eliminating IEEE-754 floating-point inaccuracies.
-- **Deadlock-Free Row Locking**: Two-phase atomic transfers sort account IDs deterministically (`sorted([sender_id, receiver_id])`) before row updates.
-- **Timing Attack Resistance**: Uniform dummy password hashing runs even on invalid username lookups to prevent user enumeration via timing differentials.
-- **Stateless JWT Security**: JWT bearer tokens signed with cryptographic keys with strict expiry handling.
+### Clean UI & Real-Time Sync
+- **No Heavy Frontend Frameworks**: Built using Vanilla JavaScript and Vanilla CSS. Fast load times with zero npm build step.
+- **Light & Dark Mode**: Handcrafted theme switcher with full contrast support in both modes.
+- **Multi-Tab Sync**: Background polling keeps balances, notifications, and card states in sync across multiple browser tabs.
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+## Tech Stack
 
-```mermaid
-graph TD
-    Client["Client (Browser / Mobile Web)\nVanilla ES6+ | Modern CSS3 | Chart.js"]
-    
-    subgraph SecurityGateway ["Security & Gateway Layer"]
-        JWT["Flask-JWT-Extended Gateway"]
-        RateLimit["Timing Attack Shield & Input Sanitization"]
-    end
-    
-    subgraph CoreApplication ["Nova Application Core (Flask 3.1)"]
-        LedgerEngine["ACID Transaction Ledger (Integer Paise)"]
-        CardEngine["Titanium Card Controls & Daily Spend Cap"]
-        BBPSEngine["BBPS Utility BillPay & MPIN Verifier"]
-        VaultEngine["Jupiter Smart Vaults (Goal Lockers)"]
-        RewardEngine["CRED Mystery Scratch Card Engine"]
-        SyncEngine["Multi-Tab Heartbeat & Notification Hub"]
-        AIEngine["Nova AI Copilot (Gemini / Heuristic Engine)"]
-    end
-    
-    subgraph DataStorage ["Persistence Layer"]
-        DB[("SQLite WAL / PostgreSQL (ACID Compliant)\nUsers | Wallets | Transactions | Vaults | Rewards")]
-    end
-    
-    Client -->|HTTPS REST API Requests| JWT
-    JWT --> RateLimit
-    RateLimit --> CoreApplication
-    
-    LedgerEngine --> DB
-    CardEngine --> DB
-    BBPSEngine --> DB
-    VaultEngine --> DB
-    RewardEngine --> DB
-    SyncEngine --> DB
-    AIEngine -.->|Context Query| DB
-```
+- **Backend**: Python 3.11, Flask 3.1, Flask-SQLAlchemy (SQLAlchemy 2.0), Flask-JWT-Extended, Werkzeug
+- **Database**: SQLite (Write-Ahead Logging enabled for concurrency) / PostgreSQL compatible
+- **Frontend**: HTML5, Vanilla JavaScript (ES6+), Vanilla CSS3, Chart.js
+- **Production Server**: Gunicorn WSGI, Render Cloud
 
 ---
 
-## 🚀 Quick Demo Credentials
+## Quick Demo Account
 
-For instant demonstration and evaluation without registration, use the **Founder Demo** account:
+You can create a new account on the signup screen, or use the pre-configured demo account:
 
-| Attribute | Demo Account Value |
-| :--- | :--- |
-| **Username** | `priyanshu` |
-| **Password** | `Nova@123` |
-| **UPI MPIN** | `1234` |
-| **Initial Wallet Balance** | **₹45,000.00** |
-| **Linked Core Bank (HDFC)** | **₹1,50,000.00** |
-| **Total Net Worth** | **₹2,20,000.00** |
-| **Pre-seeded Ledger** | Amazon Pay India, Zomato Limited, Reliance Jio, Swiggy, IRCTC |
-| **Smart Vaults** | Emergency Reserve (₹10k), MacBook Pro M4 Fund (₹15k) |
-| **Scratch Cards** | 2 Ready-to-scratch mystery cashback rewards |
-
-*(You can also register a brand-new custom account anytime via the Signup tab).*
+- **Username**: `priyanshu`
+- **Password**: `Nova@123`
+- **UPI MPIN**: `1234`
+- **Initial Balances**: ₹45,000 (Wallet) | ₹1,50,000 (Bank)
 
 ---
 
-## 🛠️ Tech Stack
+## Local Setup
 
-### Backend
-- **Python 3.11+**: Core runtime
-- **Flask 3.1.3**: Microframework with modular blueprint routing
-- **SQLAlchemy 2.0 / Flask-SQLAlchemy 3.1**: ORM with ACID transaction boundaries
-- **Flask-JWT-Extended 4.7**: Stateless authentication & token life-cycle management
-- **Werkzeug 3.1**: Security utilities (PBKDF2-SHA256 password hashing)
-- **Gunicorn 21.2+**: High-concurrency production WSGI HTTP server
-
-### Frontend
-- **HTML5 Semantic Markup**: Clean, accessible markup with ARIA tags
-- **Vanilla CSS3**: Design system with HSL tokens, glassmorphism, flexbox/grid, zero bloated UI libraries
-- **Vanilla JavaScript (ES6+)**: Custom DOM controllers, Canvas scratch mechanics, debounced API calls
-- **Chart.js**: Financial expenditure distribution charts
-- **Google Fonts (Inter)**: Clean modern typography
-
-### Database & Deployment
-- **SQLite 3 (WAL mode)**: Zero-config local development with Write-Ahead Logging
-- **PostgreSQL Ready**: Compatible with enterprise SQL backends via `DATABASE_URL`
-- **Render Cloud**: Pre-configured via `render.yaml` and `Procfile`
-
----
-
-## 📋 Complete API Reference
-
-### 🔐 Authentication
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/signup` | Public | Register a new user account with wallet & bank provisioning |
-| `POST` | `/api/login` | Public | Authenticate username/password and receive JWT access token |
-| `GET` | `/api/me` | JWT | Fetch complete user snapshot (balances, vaults, cards, stats, history) |
-
-### 💸 Core Banking & Ledger
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/transfer` | JWT | Peer-to-peer atomic transfer to another username |
-| `POST` | `/api/load` | JWT | Instant inward load from linked Core Bank into liquid wallet |
-| `GET` | `/api/directory` | JWT | List eligible recipient usernames for payment autocompletion |
-| `POST` | `/api/request` | JWT | Create a formal payment request |
-| `POST` | `/api/request/respond` | JWT | Accept and pay or decline an incoming payment request |
-
-### 💳 Titanium Card Controls
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/card/freeze` | JWT | Instant toggle to Freeze / Unfreeze card kill-switch |
-| `POST` | `/api/card/reveal` | JWT | Authenticated reveal of unmasked 16-digit PAN & 3-digit CVV |
-| `POST` | `/api/card/limit` | JWT | Update daily spend cap (`₹5,000` to `₹2,00,000`) |
-| `POST` | `/api/card/switch_bank` | JWT | Switch linked funding bank (HDFC Bank vs ICICI Bank) |
-
-### 🎁 CRED Scratch Cards & Rewards
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/rewards` | JWT | Fetch all user reward cards and unclaimed rewards |
-| `POST` | `/api/rewards/claim` | JWT | Scratch & claim mystery card; deposits cashback to wallet |
-
-### ⚡ BBPS Utility BillPay Engine
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/bills/fetch` | JWT | Query operator by category & consumer ID to fetch due bill |
-| `POST` | `/api/bills/pay` | JWT | Pay bill with 4-digit UPI MPIN validation and cashback trigger |
-
-### 🔒 Jupiter Smart Vaults
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/vaults` | JWT | List user vaults with target amounts & progress |
-| `POST` | `/api/vaults/deposit` | JWT | Move liquid wallet funds into a locked vault |
-| `POST` | `/api/vaults/withdraw` | JWT | Unlock vault funds back into liquid wallet balance |
-
-### 🤖 AI Financial Advisor & Real-Time Sync
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/ai/insights` | JWT | Retrieve automated liquidity ratios & spending health analysis |
-| `POST` | `/api/ai/ask` | JWT | Natural language financial questions via Gemini / AI heuristics |
-| `GET` | `/api/notifications` | JWT | Fetch notification audit feed with unread count |
-| `POST` | `/api/notifications/read` | JWT | Mark all notifications as read |
-| `GET` | `/api/sync` | JWT | Lightweight heartbeat syncing balances across browser tabs |
-
----
-
-## 💻 Getting Started & Local Installation
-
-### Prerequisites
-- Python 3.11 or higher
-- Git
-
-### 1. Clone the Repository
+### 1. Clone the repository
 ```bash
 git clone https://github.com/PriyanshuChauhan-007/NovaWallet.git
 cd NovaWallet
 ```
 
-### 2. Create and Activate a Virtual Environment
+### 2. Create and activate a virtual environment
 ```bash
 # Windows
 python -m venv .venv
@@ -257,114 +97,114 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables (Optional)
+### 4. Configure environment (optional)
 ```bash
-# Copy template
+# Windows PowerShell
+Copy-Item .env.example .env
+
+# macOS / Linux
 cp .env.example .env
-
-# On Windows PowerShell:
-# Copy-Item .env.example .env
 ```
-*(If unset, NovaWallet runs with secure local defaults and initializes SQLite automatically).*
+*(If left unset, the app uses secure local defaults and SQLite).*
 
-### 5. Launch the Application
+### 5. Start the application
 ```bash
 python app.py
 ```
-Open your browser and navigate to: **`http://localhost:5000`**
-
-Click **"Priyanshu Chauhan (Founder Demo)"** for 1-click login!
+Open `http://localhost:5000` in your browser.
 
 ---
 
-## 🧪 Automated Testing Suite
+## Automated Tests
 
-NovaWallet includes two comprehensive automated test suites covering authentication, ACID transactions, card security controls, rewards, BBPS bill payments, and database hygiene.
+The repository includes automated test suites covering authentication, ledger math, card controls, bill payments, rewards, and sync:
 
-### Run Tier-1 Fintech Test Suite:
 ```bash
+# Run core fintech endpoints test suite
 python test_fintech_endpoints.py
-```
-**Tests Covered:**
-- ✅ Founder Demo authentication & JWT acquisition
-- ✅ Wallet & core bank balances integrity
-- ✅ CRED scratch card claiming & instant cashback balance credit
-- ✅ BBPS bill fetch & UPI MPIN atomic payment
-- ✅ Card freeze kill-switch & unfreeze validation
-- ✅ Card PAN (4532 ...) & CVV (481) reveal authentication
-- ✅ Daily spend cap boundary enforcement (rejects over-limit transactions)
-- ✅ Notification feed & mark-as-read
-- ✅ Real-time multi-tab sync endpoint (`/api/sync`)
-- ✅ Zero purged names verification across all database tables
 
-### Run Auth Flow & AI Advisory Test Suite:
-```bash
+# Run authentication and vault test suite
 python test_auth_flow.py
 ```
-**Tests Covered:**
-- ✅ User signup, password hashing, and token issuance
-- ✅ Authenticated `/api/me` profile resolution
-- ✅ Logout, token discard, and re-login
-- ✅ Recipient directory lookup
-- ✅ Vault deposit and withdrawal balance isolation
-- ✅ AI Financial Insights & natural language question endpoint
 
 ---
 
-## ☁️ Production Deployment (Render)
+## API Endpoints
 
-NovaWallet is production-ready for deployment on **Render**:
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/signup` | Public | Register a new user |
+| `POST` | `/api/login` | Public | Log in and receive JWT token |
+| `GET` | `/api/me` | JWT | Fetch user profile, balances, and history |
+| `POST` | `/api/transfer` | JWT | Send money to another user |
+| `POST` | `/api/load` | JWT | Add money to wallet from linked bank |
+| `GET` | `/api/directory` | JWT | Search registered users for payments |
+| `POST` | `/api/request` | JWT | Create a payment request |
+| `POST` | `/api/request/respond` | JWT | Accept or decline a payment request |
+| `POST` | `/api/card/freeze` | JWT | Toggle card freeze status |
+| `POST` | `/api/card/reveal` | JWT | View unmasked card PAN and CVV |
+| `POST` | `/api/card/limit` | JWT | Update daily spend limit |
+| `POST` | `/api/card/switch_bank` | JWT | Switch linked primary bank |
+| `GET` | `/api/rewards` | JWT | Fetch scratch cards list |
+| `POST` | `/api/rewards/claim` | JWT | Claim scratch card cashback |
+| `POST` | `/api/bills/fetch` | JWT | Fetch utility bill details |
+| `POST` | `/api/bills/pay` | JWT | Pay bill with MPIN |
+| `GET` | `/api/vaults` | JWT | View savings goals |
+| `POST` | `/api/vaults/deposit` | JWT | Transfer money into vault |
+| `POST` | `/api/vaults/withdraw` | JWT | Withdraw money from vault |
+| `GET` | `/api/notifications` | JWT | Fetch notification feed |
+| `POST` | `/api/notifications/read` | JWT | Mark notifications as read |
+| `GET` | `/api/sync` | JWT | Multi-tab sync heartbeat |
+
+---
+
+## Deployment
+
+The app is ready for deployment on **Render**:
 
 1. Push your repository to GitHub.
-2. In the Render Dashboard, create a **New Web Service** and link your repository.
-3. Configure settings:
-   - **Environment**: `Python`
+2. In the Render Dashboard, create a **New Web Service** and connect your repository.
+3. Render detects `render.yaml` or use:
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn app:app`
-4. Add Environment Variables:
+4. Set environment variables:
    - `PYTHON_VERSION`: `3.11.9`
-   - `FLASK_SECRET_KEY`: *(Generate a secure random string)*
-   - `JWT_SECRET_KEY`: *(Generate a secure random string)*
-   - `FLASK_DEBUG`: `0`
-5. Click **Deploy Web Service**.
-
-Alternatively, Render will automatically detect the included [`render.yaml`](render.yaml) blueprint!
+   - `FLASK_SECRET_KEY`: *(random secret string)*
+   - `JWT_SECRET_KEY`: *(random secret string)*
 
 ---
 
-## 📂 Project Directory Structure
+## Project Structure
 
 ```plaintext
 NovaWallet/
-├── .env.example             # Environment configuration template
-├── .gitignore               # Comprehensive Git exclusion rules
-├── LICENSE                  # Open-source MIT License
-├── Procfile                 # Production WSGI process definition (Gunicorn)
-├── README.md                # Comprehensive project documentation
-├── app.py                   # Core Flask application, ACID ledger & REST APIs
-├── render.yaml              # Render Cloud deployment blueprint
-├── requirements.txt         # Production Python dependencies
+├── .env.example             # Environment template
+├── .gitignore               # Git exclusion rules
+├── LICENSE                  # MIT License
+├── Procfile                 # Production process file (Gunicorn)
+├── README.md                # Project documentation
+├── app.py                   # Core Flask app, models, and REST endpoints
+├── render.yaml              # Render deployment blueprint
+├── requirements.txt         # Python dependencies
 ├── static/
 │   ├── css/
-│   │   └── style.css        # Adaptive Light/Dark design system (HSL tokens)
+│   │   └── style.css        # Adaptive Light/Dark CSS design system
 │   └── js/
-│       └── main.js          # Client controller, Canvas scratch, Card controls
+│       └── main.js          # Client-side logic, card controls, canvas scratch
 ├── templates/
-│   └── index.html           # Semantic HTML5 single-page application view
-├── test_auth_flow.py        # Automated test suite for Auth, Vaults & AI
-├── test_fintech_endpoints.py# Automated test suite for Card, BBPS, Rewards & Sync
-└── wallet_data.json         # Legacy fallback migration dictionary
+│   └── index.html           # Main application template
+├── test_auth_flow.py        # Auth & vault test suite
+├── test_fintech_endpoints.py# Payments, cards & rewards test suite
+└── wallet_data.json         # Legacy fallback seed data
 ```
 
 ---
 
-## 📄 License & Author
+## License
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
-Developed with ❤️ by **[Priyanshu Chauhan](https://github.com/PriyanshuChauhan-007)**.
+This project is licensed under the [MIT License](LICENSE).
