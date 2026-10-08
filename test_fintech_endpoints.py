@@ -97,6 +97,25 @@ def test_tier1_fintech_flows():
     assert limit_res.json["limit_inr"] == 85000
     print(f" Daily limit updated: ₹{limit_res.json['limit_inr']}")
 
+    # Test daily cap boundary enforcement
+    tight_limit = client.post("/api/card/limit", headers=headers, json={"limit_inr": 5000})
+    assert tight_limit.status_code == 200
+    over_limit_bill = client.post("/api/bills/pay", headers=headers, json={
+        "category": "Electricity",
+        "operator": "Tata Power",
+        "consumer_id": "999888",
+        "amount": 7500.00,
+        "mpin": "1234"
+    })
+    assert over_limit_bill.status_code == 400
+    err_msg = over_limit_bill.json.get("msg") or over_limit_bill.json.get("error", "")
+    assert "daily spend cap" in err_msg.lower()
+    print(" Daily spend cap successfully rejected over-limit transaction.")
+
+    # Reset limit back to healthy ₹1,00,000
+    reset_lim = client.post("/api/card/limit", headers=headers, json={"limit_inr": 100000})
+    assert reset_lim.status_code == 200
+
     # Switch bank instrument
     bank_res = client.post("/api/card/switch_bank", headers=headers)
     assert bank_res.status_code == 200

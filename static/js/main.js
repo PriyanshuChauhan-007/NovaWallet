@@ -460,11 +460,10 @@
         }
 
         const slider = document.getElementById('sliderDailyLimit');
-        const limitDisp = document.getElementById('dailyLimitDisplay');
-        if (data.wallet?.daily_limit_inr) {
-            if (slider) slider.value = data.wallet.daily_limit_inr;
-            if (limitDisp) limitDisp.textContent = formatINR(data.wallet.daily_limit_inr);
-        }
+        const limitDisp = document.getElementById('displayDailyLimit') || document.getElementById('dailyLimitDisplay');
+        const currentCap = data.card?.daily_limit ?? data.wallet?.daily_limit_inr ?? 100000;
+        if (slider) slider.value = currentCap;
+        if (limitDisp) limitDisp.textContent = formatINR(currentCap);
 
         const pBankEl = document.getElementById('primaryBankNameDisplay');
         if (pBankEl && data.wallet?.primary_bank) {
@@ -2619,7 +2618,7 @@
         const revealBtn = document.getElementById('btnRevealCardDetails');
         const switchBankBtn = document.getElementById('btnSwitchBankInstrument');
         const limitSlider = document.getElementById('sliderDailyLimit');
-        const limitDisplay = document.getElementById('dailyLimitDisplay');
+        const limitDisplay = document.getElementById('displayDailyLimit') || document.getElementById('dailyLimitDisplay');
         const freezeOverlay = document.getElementById('cardFrozenOverlay');
         const copyPanBtn = document.getElementById('copyCardNumberBtn');
 
@@ -2694,24 +2693,36 @@
             }
         });
 
-        // Daily Limit Slider
+        // Daily Limit Slider with Instant Visual Feedback
         let limitDebounceTimer = null;
+        const setCapDisplay = (val) => {
+            const disp = document.getElementById('displayDailyLimit') || document.getElementById('dailyLimitDisplay');
+            if (disp) disp.textContent = formatINR(val);
+        };
+
         limitSlider?.addEventListener('input', (e) => {
             const val = Number(e.target.value) || 0;
-            if (limitDisplay) limitDisplay.textContent = formatINR(val);
+            setCapDisplay(val);
 
             clearTimeout(limitDebounceTimer);
             limitDebounceTimer = setTimeout(async () => {
                 try {
-                    await apiRequest('/card/limit', {
+                    const res = await apiRequest('/card/limit', {
                         method: 'POST',
                         body: JSON.stringify({ limit_inr: val })
                     });
-                    showToast(`Daily transaction limit set to ${formatINR(val)}`);
+                    const actual = res.limit_inr ?? res.daily_limit ?? val;
+                    setCapDisplay(actual);
+                    showToast("Daily spend cap set to " + formatINR(actual));
                 } catch (err) {
                     showToast(err.message, true);
                 }
-            }, 600);
+            }, 350);
+        });
+
+        limitSlider?.addEventListener('change', (e) => {
+            const val = Number(e.target.value) || 0;
+            setCapDisplay(val);
         });
     }
 

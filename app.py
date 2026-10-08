@@ -746,6 +746,13 @@ def execute_transfer(sender: User, receiver: User, amount_paise: int, category: 
     if sender.id == receiver.id:
         raise TransferError("You cannot send money to yourself.")
 
+    if getattr(sender.wallet, "card_frozen", False):
+        raise TransferError("Account / Card is currently FROZEN. Please unfreeze to perform transactions.")
+
+    daily_cap = getattr(sender.wallet, "daily_limit_paise", 100000 * PAISE)
+    if amount_paise > daily_cap:
+        raise TransferError(f"Transaction exceeds your configured daily spend cap of ₹{to_rupees(daily_cap):,.2f}.")
+
     # Lock rows in a consistent (id) order to avoid deadlocks on row-locking DBs.
     steps = sorted([(sender.id, -amount_paise), (receiver.id, amount_paise)], key=lambda s: s[0])
     for user_id, delta in steps:
@@ -1195,6 +1202,10 @@ def pay_bill():
         # Check if card is frozen
         if getattr(user.wallet, "card_frozen", False):
             return err("Account / Card is currently FROZEN. Please unfreeze before paying bills.", 403)
+
+        daily_cap = getattr(user.wallet, "daily_limit_paise", 100000 * PAISE)
+        if amt > daily_cap:
+            return err(f"Bill payment exceeds your configured daily spend cap of ₹{to_rupees(daily_cap):,.2f}.", 400)
 
         # Atomic debit from wallet
         res = db.session.execute(
