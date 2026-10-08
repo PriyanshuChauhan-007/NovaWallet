@@ -444,6 +444,33 @@ class Reward(db.Model):
 
     user: Any = db.relationship("User", backref=db.backref("rewards", cascade="all, delete-orphan", lazy=True))
 
+    def __init__(
+        self,
+        user_id: int | None = None,
+        title: str = "",
+        subtitle: str = "Tap & scratch to reveal cashback",
+        amount_paise: int = 0,
+        is_claimed: bool = False,
+        created_at: datetime | None = None,
+        claimed_at: datetime | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        if user_id is not None:
+            self.user_id = user_id
+        if title:
+            self.title = title
+        if subtitle:
+            self.subtitle = subtitle
+        self.amount_paise = amount_paise
+        self.is_claimed = is_claimed
+        if created_at is not None:
+            self.created_at = created_at
+        if claimed_at is not None:
+            self.claimed_at = claimed_at
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
 
 class Notification(db.Model):
     """Real-time financial activity and security alerts."""
@@ -459,6 +486,31 @@ class Notification(db.Model):
     created_at: Any = db.Column(db.DateTime, default=utcnow)
 
     user: Any = db.relationship("User", backref=db.backref("notifications", cascade="all, delete-orphan", lazy=True))
+
+    def __init__(
+        self,
+        user_id: int | None = None,
+        title: str = "",
+        message: str = "",
+        kind: str = "INFO",
+        is_read: bool = False,
+        created_at: datetime | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        if user_id is not None:
+            self.user_id = user_id
+        if title:
+            self.title = title
+        if message:
+            self.message = message
+        if kind:
+            self.kind = kind
+        self.is_read = is_read
+        if created_at is not None:
+            self.created_at = created_at
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class OtpChallenge(db.Model):
