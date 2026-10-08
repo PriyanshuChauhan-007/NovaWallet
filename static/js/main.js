@@ -4,12 +4,15 @@
  * Implements:
  * 1. Dark Mode Toggle with localStorage persistence & system preference fallback.
  * 2. JWT Authentication (Bearer token stored in localStorage, attached to all requests).
- * 3. Animated Balance Counter (CountUp animation).
- * 4. Transaction Filtering by chips (All, Credits, Debits, Food, Shopping, Bills).
- * 5. Statement Export (CSV and PDF generation).
- * 6. Peer-to-Peer Request Money & Pending Requests approval/decline workflow.
- * 7. Split Bill Modal with participant tags, equal division & batch requests.
- * 8. Fallback dialog click handling for light-dismiss on non-supporting browsers.
+ * 3. Animated Balance Counter (CountUp animation) & UPI VPA Copying.
+ * 4. Realistic Linked Bank Instrument with mask/unmask toggle.
+ * 5. Quick Amount Pills & Recent Peer Contacts.
+ * 6. Cashflow Chart (with ₹0.00 'No Flow' fix) & Spending Category Breakdown.
+ * 7. Simulated In-App SMS Notification for OTP & 4-Digit Box Input with auto-advance.
+ * 8. Live Transaction Search & Clickable Receipt Modal with Print/Download.
+ * 9. Statement Export (CSV and PDF generation).
+ * 10. Peer-to-Peer Payment Requests & Split Bill Engine.
+ * 11. Quick Demo Account Single-Click Selection.
  */
 
 (() => {
@@ -26,10 +29,13 @@
         userData: null,
         walletChart: null,
         activeFilter: 'all',
+        searchQuery: '',
         splitParticipants: [],
         currentWalletBalance: 0,
         currentBankBalance: 0,
-        pendingApprovalRequestId: null
+        isBankBalanceMasked: false,
+        lastOtpCode: null,
+        lastOtpAmount: null
     };
 
     // -------------------------------------------------------------------------
@@ -107,9 +113,6 @@
         });
     }
 
-    /**
-     * Smooth CountUp Animation
-     */
     function animateValue(element, start, end, duration = 800) {
         if (!element) return;
         if (isNaN(start)) start = 0;
@@ -124,7 +127,6 @@
         function update(currentTime) {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease out cubic
             const ease = 1 - Math.pow(1 - progress, 3);
             const current = start + (end - start) * ease;
 
@@ -135,7 +137,7 @@
             } else {
                 element.textContent = formatINR(end);
                 element.classList.add('bump');
-                setTimeout(() => element.classList.remove('bump'), 600);
+                setTimeout(() => element.classList.remove('bump'), 500);
             }
         }
 
@@ -143,7 +145,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // Theme Management (Emerald Light / Sleek Dark)
+    // Theme Management
     // -------------------------------------------------------------------------
     function initTheme() {
         const meta = document.querySelector('meta[name="color-scheme"]');
@@ -169,12 +171,17 @@
                 meta.content = target;
                 localStorage.setItem('color-scheme', target);
                 showToast(`Switched to ${target} mode`);
+
+                // Re-render chart to adapt slate colors
+                if (state.userData?.stats) {
+                    drawChart(Number(state.userData.stats.in || 0), Number(state.userData.stats.out || 0));
+                }
             });
         });
     }
 
     // -------------------------------------------------------------------------
-    // Authentication Flow (JWT-Extended)
+    // Authentication Flow & Demo Quick-Fill
     // -------------------------------------------------------------------------
     function initAuth() {
         const authForm = document.getElementById('authForm');
@@ -203,11 +210,11 @@
             tabSignup.setAttribute('aria-selected', String(!isLogin));
 
             if (isLogin) {
-                authSubtitle.textContent = 'Sign in to your secure wallet';
+                authSubtitle.textContent = 'Sign in to your secure digital wallet';
                 authSubmitBtn.textContent = 'Secure Login';
                 passwordInput.setAttribute('autocomplete', 'current-password');
             } else {
-                authSubtitle.textContent = 'Create your account & link bank';
+                authSubtitle.textContent = 'Create your account & link UPI bank';
                 authSubmitBtn.textContent = 'Create Account & Link Bank';
                 passwordInput.setAttribute('autocomplete', 'new-password');
             }
@@ -215,6 +222,22 @@
 
         tabLogin?.addEventListener('click', () => setMode('login'));
         tabSignup?.addEventListener('click', () => setMode('signup'));
+
+        // Quick Demo Accounts single-click autofill
+        document.querySelectorAll('.demo-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const user = chip.dataset.user;
+                const pass = chip.dataset.pass;
+                const userInp = document.getElementById('userInput');
+                const passInp = document.getElementById('passwordInput');
+                if (userInp && passInp) {
+                    setMode('login');
+                    userInp.value = user;
+                    passInp.value = pass;
+                    showToast(`Loaded demo credentials for ${user}!`);
+                }
+            });
+        });
 
         authForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -273,6 +296,9 @@
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('userBadge').textContent = '@' + username.toLowerCase();
 
+        // Update UPI VPA
+        updateUpiVpa(username);
+
         fetchUserData();
         checkDeepLinkPay();
     }
@@ -284,6 +310,62 @@
         localStorage.removeItem('nova_jwt');
         localStorage.removeItem('nova_user');
         window.location.reload();
+    }
+
+    // -------------------------------------------------------------------------
+    // UPI VPA & Bank Masking Logic
+    // -------------------------------------------------------------------------
+    function updateUpiVpa(username) {
+        const vpa = `${(username || 'user').toLowerCase()}@novapay`;
+        const vpaEl = document.getElementById('userVpa');
+        const qrVpa = document.getElementById('qrVpaCaption');
+        if (vpaEl) vpaEl.textContent = vpa;
+        if (qrVpa) qrVpa.textContent = `UPI ID: ${vpa}`;
+    }
+
+    function initUpiAndBankControls() {
+        // Copy UPI VPA button
+        const copyVpaBtn = document.getElementById('copyVpaBtn');
+        const vpaPill = document.getElementById('vpaPill');
+
+        const copyAction = async (e) => {
+            e.stopPropagation();
+            const vpa = `${(state.activeUser || 'user').toLowerCase()}@novapay`;
+            try {
+                await navigator.clipboard.writeText(vpa);
+                showToast(`UPI ID copied: ${vpa}`);
+            } catch {
+                showToast(`UPI ID: ${vpa}`);
+            }
+        };
+
+        copyVpaBtn?.addEventListener('click', copyAction);
+        vpaPill?.addEventListener('click', copyAction);
+
+        // Bank balance mask / unmask eye toggle
+        const toggleBankEye = document.getElementById('toggleBankEye');
+        toggleBankEye?.addEventListener('click', () => {
+            state.isBankBalanceMasked = !state.isBankBalanceMasked;
+            updateBankDisplay();
+        });
+    }
+
+    function updateBankDisplay() {
+        const bankEl = document.getElementById('viewBank');
+        const eyeShow = document.querySelector('.bank-eye-btn .eye-show');
+        const eyeHide = document.querySelector('.bank-eye-btn .eye-hide');
+
+        if (!bankEl) return;
+
+        if (state.isBankBalanceMasked) {
+            bankEl.textContent = '₹••••••';
+            if (eyeShow) eyeShow.style.display = 'none';
+            if (eyeHide) eyeHide.style.display = 'block';
+        } else {
+            bankEl.textContent = formatINR(state.currentBankBalance);
+            if (eyeShow) eyeShow.style.display = 'block';
+            if (eyeHide) eyeHide.style.display = 'none';
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -306,24 +388,36 @@
     function renderDashboard(data) {
         // Balances
         const walletEl = document.getElementById('viewWallet');
-        const bankEl = document.getElementById('viewBank');
-
         walletEl?.classList.remove('skeleton');
+
         const newWalletBal = Number(data.wallet_balance || 0);
         const newBankBal = Number(data.bank_balance || 0);
 
         animateValue(walletEl, state.currentWalletBalance, newWalletBal);
-        if (bankEl) bankEl.textContent = formatINR(newBankBal);
 
         state.currentWalletBalance = newWalletBal;
         state.currentBankBalance = newBankBal;
+        updateBankDisplay();
 
-        // Analytics
+        // UPI VPA update
+        if (data.username) {
+            updateUpiVpa(data.username);
+        }
+
+        // Analytics & Doughnut Chart
         const inAmt = Number(data.stats?.in || 0);
         const outAmt = Number(data.stats?.out || 0);
-        document.getElementById('txtIn').textContent = formatINR(inAmt);
-        document.getElementById('txtOut').textContent = formatINR(outAmt);
+        const txtIn = document.getElementById('txtIn');
+        const txtOut = document.getElementById('txtOut');
+        if (txtIn) txtIn.textContent = formatINR(inAmt);
+        if (txtOut) txtOut.textContent = formatINR(outAmt);
         drawChart(inAmt, outAmt);
+
+        // Category Breakdown
+        renderCategoryBreakdown(data.history || []);
+
+        // Recent Contacts Peers
+        renderRecentPeers(data.history || []);
 
         // Requests
         renderRequests(data.requests);
@@ -332,6 +426,9 @@
         renderHistory();
     }
 
+    // -------------------------------------------------------------------------
+    // Fix ₹0.00 Chart Bug & Category Breakdown
+    // -------------------------------------------------------------------------
     function drawChart(inVal, outVal) {
         const canvas = document.getElementById('chartCanvas');
         if (!canvas || typeof Chart === 'undefined') return;
@@ -342,40 +439,315 @@
 
         const ctx = canvas.getContext('2d');
         const isDark = document.querySelector('meta[name="color-scheme"]')?.content === 'dark';
+        const centerBadge = document.getElementById('chartCenterVal');
 
-        state.walletChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [inVal || 0.001, outVal || 0.001],
-                    backgroundColor: ['#10b981', '#ef4444'],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ` ₹${Number(ctx.raw).toFixed(2)}`
-                        }
-                    }
+        const hasFlow = inVal > 0 || outVal > 0;
+
+        if (!hasFlow) {
+            // Fix ₹0.00 bug: Render a single neutral slate ring with center label "No Flow"
+            if (centerBadge) centerBadge.textContent = 'No Flow';
+
+            const neutralColor = isDark ? '#27272a' : '#e4e4e7';
+            state.walletChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: [neutralColor],
+                        borderWidth: 0,
+                        hoverOffset: 0
+                    }]
                 },
-                maintainAspectRatio: false
+                options: {
+                    cutout: '76%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    maintainAspectRatio: false,
+                    responsive: true
+                }
+            });
+        } else {
+            if (centerBadge) {
+                const net = inVal - outVal;
+                centerBadge.textContent = net >= 0 ? '+₹' : '-₹';
             }
+
+            state.walletChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [inVal || 0.0001, outVal || 0.0001],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 3
+                    }]
+                },
+                options: {
+                    cutout: '76%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => ` ₹${Number(c.raw).toFixed(2)}`
+                            }
+                        }
+                    },
+                    maintainAspectRatio: false,
+                    responsive: true
+                }
+            });
+        }
+    }
+
+    function renderCategoryBreakdown(history) {
+        const container = document.getElementById('categoryBreakdown');
+        if (!container) return;
+
+        // Tally DEBIT history by category
+        const debits = history.filter(t => t.type === 'DEBIT');
+        if (!debits.length) {
+            container.innerHTML = `<div class="breakdown-empty">No spending history yet</div>`;
+            return;
+        }
+
+        const totals = {
+            'Transfer': 0,
+            'Food': 0,
+            'Shopping': 0,
+            'Bills': 0
+        };
+
+        let grandTotal = 0;
+        debits.forEach(t => {
+            const cat = t.category || 'Transfer';
+            const amt = Number(t.amount || 0);
+            if (totals[cat] !== undefined) {
+                totals[cat] += amt;
+            } else {
+                totals['Transfer'] += amt;
+            }
+            grandTotal += amt;
         });
+
+        if (grandTotal <= 0) {
+            container.innerHTML = `<div class="breakdown-empty">No spending recorded yet</div>`;
+            return;
+        }
+
+        const colors = {
+            'Food': '#f59e0b',
+            'Shopping': '#8b5cf6',
+            'Bills': '#3b82f6',
+            'Transfer': '#10b981'
+        };
+
+        const sorted = Object.entries(totals)
+            .filter(([_, val]) => val > 0)
+            .sort((a, b) => b[1] - a[1]);
+
+        if (!sorted.length) {
+            container.innerHTML = `<div class="breakdown-empty">No spending recorded yet</div>`;
+            return;
+        }
+
+        container.innerHTML = sorted.map(([cat, val]) => {
+            const pct = Math.round((val / grandTotal) * 100);
+            const color = colors[cat] || '#10b981';
+            return `
+                <div class="breakdown-item">
+                    <div class="breakdown-meta">
+                        <span class="breakdown-cat-name">${cat}</span>
+                        <span class="breakdown-cat-vals">${formatINR(val)} &bull; <strong>${pct}%</strong></span>
+                    </div>
+                    <div class="breakdown-progress-track">
+                        <div class="breakdown-progress-fill" style="width: ${pct}%; background: ${color};"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     // -------------------------------------------------------------------------
-    // Transaction History & Dynamic Filtering
+    // Quick Amount Pills & Recent Peers
     // -------------------------------------------------------------------------
-    function initFilters() {
-        const filterRow = document.getElementById('filterRow');
-        if (!filterRow) return;
+    function initQuickAmountPills() {
+        document.querySelectorAll('.amt-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                const group = pill.closest('.quick-amt-pills');
+                const targetId = group?.dataset.target;
+                const amt = Number(pill.dataset.amt) || 0;
+                if (!targetId) return;
 
-        filterRow.addEventListener('click', (e) => {
+                const input = document.getElementById(targetId);
+                if (!input) return;
+
+                const current = Number(input.value) || 0;
+                input.value = current + amt;
+                input.focus();
+                showToast(`+${formatINR(amt)} added`);
+            });
+        });
+    }
+
+    function renderRecentPeers(history) {
+        // Collect peers from history
+        const peersSet = new Set();
+        history.forEach(t => {
+            if (t.counterparty && t.counterparty !== 'Unknown') {
+                peersSet.add(t.counterparty);
+            }
+        });
+
+        // Add standard demo fallback peers
+        ['Priyanshu', 'Prakhar', 'Rahul', 'Deepti'].forEach(p => {
+            if (p.toLowerCase() !== (state.activeUser || '').toLowerCase()) {
+                peersSet.add(p);
+            }
+        });
+
+        const peers = Array.from(peersSet).slice(0, 5);
+
+        // 1. In Send panel
+        const payPeersContainer = document.getElementById('payRecentPeers');
+        if (payPeersContainer) {
+            payPeersContainer.innerHTML = peers.map(p => `
+                <button type="button" class="peer-chip" onclick="window.NovaApp.selectPeer('${escapeHtml(p)}')">
+                    <span class="peer-avatar">${escapeHtml(p.substring(0, 1))}</span>
+                    <span>@${escapeHtml(p)}</span>
+                </button>
+            `).join('');
+        }
+
+        // 2. In Right Sidebar
+        const sideList = document.getElementById('quickContactsList');
+        if (sideList) {
+            sideList.innerHTML = peers.map(p => `
+                <div class="contact-row-item" onclick="window.NovaApp.selectPeer('${escapeHtml(p)}')">
+                    <div class="contact-info">
+                        <div class="contact-avatar">${escapeHtml(p.substring(0, 1))}</div>
+                        <div>
+                            <div class="contact-name">${escapeHtml(p)}</div>
+                            <div class="contact-handle">@${escapeHtml(p.toLowerCase())}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="contact-send-btn">Send &rarr;</button>
+                </div>
+            `).join('');
+        }
+    }
+
+    function selectPeer(username) {
+        togglePanel('payArea');
+        const payTo = document.getElementById('payTo');
+        if (payTo) {
+            payTo.value = username;
+            document.getElementById('payAmt')?.focus();
+        }
+        showToast(`Selected @${username}`);
+    }
+
+    // -------------------------------------------------------------------------
+    // Simulated SMS Banner & 4-Box OTP
+    // -------------------------------------------------------------------------
+    function initSmsBannerAndOtpBoxes() {
+        // SMS banner dismissal
+        document.getElementById('smsCloseBtn')?.addEventListener('click', () => {
+            const banner = document.getElementById('smsBanner');
+            if (banner) banner.style.display = 'none';
+        });
+
+        // SMS auto-fill button
+        document.getElementById('smsAutofillBtn')?.addEventListener('click', () => {
+            if (state.lastOtpCode) {
+                fillOtpBoxes(state.lastOtpCode);
+                showToast('OTP auto-filled!');
+                const confBtn = document.getElementById('confPayBtn');
+                confBtn?.focus();
+            }
+        });
+
+        // 4 Single-digit OTP input boxes
+        const boxes = document.querySelectorAll('.otp-box-digit');
+        boxes.forEach((box, idx) => {
+            box.addEventListener('input', (e) => {
+                const val = box.value.replace(/\D/g, '');
+                box.value = val ? val[val.length - 1] : '';
+
+                syncOtpToHiddenInput();
+
+                if (box.value && idx < boxes.length - 1) {
+                    boxes[idx + 1].focus();
+                }
+            });
+
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !box.value && idx > 0) {
+                    boxes[idx - 1].focus();
+                }
+            });
+
+            box.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+                if (pasteData) {
+                    fillOtpBoxes(pasteData);
+                }
+            });
+        });
+    }
+
+    function fillOtpBoxes(code) {
+        const clean = String(code || '').replace(/\D/g, '').slice(0, 4);
+        const boxes = document.querySelectorAll('.otp-box-digit');
+        boxes.forEach((b, i) => {
+            b.value = clean[i] || '';
+        });
+        syncOtpToHiddenInput();
+        if (clean.length === 4) {
+            boxes[3]?.focus();
+        }
+    }
+
+    function syncOtpToHiddenInput() {
+        const boxes = document.querySelectorAll('.otp-box-digit');
+        let full = '';
+        boxes.forEach(b => { full += (b.value || ''); });
+        const hidden = document.getElementById('payOtp');
+        if (hidden) hidden.value = full;
+    }
+
+    function triggerSimulatedSms(code, amount) {
+        state.lastOtpCode = code;
+        state.lastOtpAmount = amount;
+
+        const banner = document.getElementById('smsBanner');
+        const codeSpan = document.getElementById('smsCodeVal');
+        const smsBody = document.getElementById('smsBody');
+
+        if (codeSpan) codeSpan.textContent = code;
+        if (smsBody) {
+            smsBody.innerHTML = `Your OTP for <strong>${formatINR(amount || 0)}</strong> transfer is <span class="sms-code-highlight">${escapeHtml(code)}</span>.`;
+        }
+
+        if (banner) {
+            banner.style.display = 'block';
+            clearTimeout(banner._dismissTimer);
+            banner._dismissTimer = setTimeout(() => {
+                banner.style.display = 'none';
+            }, 12000);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Transaction History, Live Search & Receipt Modal
+    // -------------------------------------------------------------------------
+    function initFiltersAndSearch() {
+        const filterRow = document.getElementById('filterRow');
+        const searchInput = document.getElementById('txnSearch');
+
+        filterRow?.addEventListener('click', (e) => {
             const chip = e.target.closest('.chip');
             if (!chip) return;
 
@@ -386,18 +758,36 @@
             state.activeFilter = chip.dataset.filter || 'all';
             renderHistory();
         });
+
+        searchInput?.addEventListener('input', (e) => {
+            state.searchQuery = e.target.value.trim().toLowerCase();
+            renderHistory();
+        });
     }
 
     function getFilteredHistory() {
         if (!state.userData?.history) return [];
         const filter = state.activeFilter;
+        const query = state.searchQuery;
 
         return state.userData.history.filter(t => {
-            if (filter === 'all') return true;
-            if (filter === 'credit') return t.type === 'CREDIT';
-            if (filter === 'debit') return t.type === 'DEBIT';
-            // Category matches
-            return (t.category || '').toLowerCase() === filter.toLowerCase();
+            // Filter match
+            let matchFilter = true;
+            if (filter === 'credit') matchFilter = t.type === 'CREDIT';
+            else if (filter === 'debit') matchFilter = t.type === 'DEBIT';
+            else if (filter !== 'all') {
+                matchFilter = (t.category || '').toLowerCase() === filter.toLowerCase();
+            }
+
+            if (!matchFilter) return false;
+
+            // Search query match
+            if (query) {
+                const hay = `${t.desc || ''} ${t.category || ''} ${t.txn_id || ''} ${t.counterparty || ''} ${t.note || ''}`.toLowerCase();
+                return hay.includes(query);
+            }
+
+            return true;
         });
     }
 
@@ -410,7 +800,7 @@
         if (!txns.length) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <p>No transactions found for "${state.activeFilter}".</p>
+                    <p>No transactions found matching your criteria.</p>
                 </div>
             `;
             return;
@@ -421,14 +811,15 @@
             const isCredit = t.type === 'CREDIT';
             const cat = t.category || (t.kind === 'LOAD' ? 'Bank Load' : 'Transfer');
             const iconSvg = isCredit
-                ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`
-                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`
+                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
 
             const dtDisplay = t.timestamp ? formatTimestamp(t.timestamp) : 'Recent';
             const noteHtml = t.note ? `<div class="note-text">"${escapeHtml(t.note)}"</div>` : '';
 
+            // Clickable item opening receipt modal
             html += `
-                <div class="history-item">
+                <div class="history-item" onclick="window.NovaApp.openReceipt('${escapeHtml(t.txn_id)}')">
                     <div class="history-left">
                         <div class="history-icon ${isCredit ? 'in' : 'out'}">${iconSvg}</div>
                         <div>
@@ -436,18 +827,121 @@
                                 ${escapeHtml(t.desc)}
                                 <span class="category-pill">${escapeHtml(cat)}</span>
                             </div>
-                            <div class="date-text">${dtDisplay} &bull; ${escapeHtml(t.txn_id)}</div>
+                            <div class="date-text">${dtDisplay} &bull; <span class="meta-mono">${escapeHtml(t.txn_id)}</span></div>
                             ${noteHtml}
                         </div>
                     </div>
                     <div class="amt-text ${isCredit ? 'credit' : 'debit'}">
-                        ${isCredit ? '+' : '-'}₹${Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ${isCredit ? '+' : '-'}${formatINR(t.amount)}
                     </div>
                 </div>
             `;
         });
 
         container.innerHTML = html;
+    }
+
+    // -------------------------------------------------------------------------
+    // Receipt Modal & Download
+    // -------------------------------------------------------------------------
+    function initReceiptModal() {
+        const modal = document.getElementById('receiptModal');
+        const copyBtn = document.getElementById('copyTxnIdBtn');
+        const downloadBtn = document.getElementById('downloadReceiptBtn');
+
+        copyBtn?.addEventListener('click', async () => {
+            const txt = document.getElementById('receiptTxnIdText')?.textContent;
+            if (txt) {
+                try {
+                    await navigator.clipboard.writeText(txt);
+                    showToast(`Copied TXN ID: ${txt}`);
+                } catch {
+                    showToast(txt);
+                }
+            }
+        });
+
+        downloadBtn?.addEventListener('click', () => {
+            const printWin = window.open('', '_blank', 'width=500,height=700');
+            if (!printWin) return showToast('Please allow popups to download receipt', true);
+
+            const amt = document.getElementById('receiptAmount')?.textContent || '₹0.00';
+            const desc = document.getElementById('receiptDesc')?.textContent || 'Payment';
+            const txnId = document.getElementById('receiptTxnIdText')?.textContent || '';
+            const time = document.getElementById('receiptTime')?.textContent || '';
+            const cat = document.getElementById('receiptCategory')?.textContent || '';
+            const party = document.getElementById('receiptCounterparty')?.textContent || '';
+            const note = document.getElementById('receiptNote')?.textContent || '';
+
+            printWin.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Receipt - ${escapeHtml(txnId)}</title>
+                    <style>
+                        body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 30px; color: #0f172a; text-align: center; }
+                        .logo { font-size: 20px; font-weight: 800; color: #10b981; margin-bottom: 4px; }
+                        .badge { background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; display: inline-block; margin-bottom: 20px; }
+                        .amt { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+                        .desc { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+                        table { width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 24px; }
+                        td { padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+                        .label { color: #64748b; font-weight: 600; }
+                        .val { text-align: right; font-weight: 700; color: #0f172a; }
+                        .mono { font-family: monospace; }
+                        .foot { font-size: 11px; color: #94a3b8; margin-top: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="logo">NovaWallet</div>
+                    <div class="badge">COMPLETED &bull; INSTANT UPI</div>
+                    <div class="amt">${escapeHtml(amt)}</div>
+                    <div class="desc">${escapeHtml(desc)}</div>
+                    <table>
+                        <tr><td class="label">Reference ID</td><td class="val mono">${escapeHtml(txnId)}</td></tr>
+                        <tr><td class="label">Date & Time</td><td class="val">${escapeHtml(time)}</td></tr>
+                        <tr><td class="label">Category</td><td class="val">${escapeHtml(cat)}</td></tr>
+                        <tr><td class="label">Counterparty</td><td class="val">${escapeHtml(party)}</td></tr>
+                        ${note ? `<tr><td class="label">Note</td><td class="val">${escapeHtml(note)}</td></tr>` : ''}
+                    </table>
+                    <div class="foot">Generated by NovaWallet Core Gateway. Authorized & Encrypted.</div>
+                    <script>window.onload = () => window.print();</script>
+                </body>
+                </html>
+            `);
+            printWin.document.close();
+        });
+    }
+
+    function openReceipt(txnId) {
+        const txns = state.userData?.history || [];
+        const t = txns.find(item => item.txn_id === txnId);
+        if (!t) return;
+
+        const modal = document.getElementById('receiptModal');
+        if (!modal) return;
+
+        const isCredit = t.type === 'CREDIT';
+        const sign = isCredit ? '+' : '-';
+
+        document.getElementById('receiptAmount').textContent = `${sign}${formatINR(t.amount)}`;
+        document.getElementById('receiptAmount').style.color = isCredit ? '#10b981' : 'inherit';
+        document.getElementById('receiptDesc').textContent = t.desc || 'UPI Transfer';
+        document.getElementById('receiptTxnIdText').textContent = t.txn_id;
+        document.getElementById('receiptTime').textContent = t.timestamp ? formatTimestamp(t.timestamp) : 'Recent';
+        document.getElementById('receiptCategory').textContent = t.category || 'Transfer';
+        document.getElementById('receiptCounterparty').textContent = t.counterparty ? `@${t.counterparty}` : (t.kind === 'LOAD' ? 'HDFC Bank' : 'NovaWallet');
+
+        const noteRow = document.getElementById('receiptNoteRow');
+        const noteVal = document.getElementById('receiptNote');
+        if (t.note && noteRow && noteVal) {
+            noteRow.style.display = 'flex';
+            noteVal.textContent = t.note;
+        } else if (noteRow) {
+            noteRow.style.display = 'none';
+        }
+
+        modal.showModal();
     }
 
     function formatTimestamp(isoStr) {
@@ -477,11 +971,8 @@
     // Statement Export (CSV & PDF)
     // -------------------------------------------------------------------------
     function initExport() {
-        const csvBtn = document.getElementById('exportCsvBtn');
-        const pdfBtn = document.getElementById('exportPdfBtn');
-
-        csvBtn?.addEventListener('click', exportCSV);
-        pdfBtn?.addEventListener('click', exportPDF);
+        document.getElementById('exportCsvBtn')?.addEventListener('click', exportCSV);
+        document.getElementById('exportPdfBtn')?.addEventListener('click', exportPDF);
     }
 
     function exportCSV() {
@@ -516,10 +1007,9 @@
         const txns = state.userData?.history || [];
         if (!txns.length) return showToast('No transactions to export', true);
 
-        // Clean printable window for saving to PDF
         const printWindow = window.open('', '_blank', 'width=800,height=900');
         if (!printWindow) {
-            return showToast('Popup blocked! Please allow popups for PDF generation.', true);
+            return showToast('Popup blocked! Please allow popups for statement generation.', true);
         }
 
         const dateStr = new Date().toLocaleDateString('en-IN', {
@@ -527,13 +1017,13 @@
         });
 
         const rowsHtml = txns.map(t => `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
+            <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px; font-size: 12px; font-family: monospace;">${escapeHtml(t.txn_id)}</td>
                 <td style="padding: 10px; font-size: 13px;">${escapeHtml(t.timestamp ? formatTimestamp(t.timestamp) : '-')}</td>
                 <td style="padding: 10px; font-size: 13px;">${escapeHtml(t.desc)}</td>
-                <td style="padding: 10px; font-size: 13px;"><span style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${escapeHtml(t.category)}</span></td>
-                <td style="padding: 10px; font-size: 13px; font-weight: bold; text-align: right; color: ${t.type === 'CREDIT' ? '#10b981' : '#111827'};">
-                    ${t.type === 'CREDIT' ? '+' : '-'}₹${Number(t.amount).toFixed(2)}
+                <td style="padding: 10px; font-size: 13px;"><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${escapeHtml(t.category)}</span></td>
+                <td style="padding: 10px; font-size: 13px; font-weight: bold; text-align: right; color: ${t.type === 'CREDIT' ? '#10b981' : '#0f172a'};">
+                    ${t.type === 'CREDIT' ? '+' : '-'}${formatINR(t.amount)}
                 </td>
             </tr>
         `).join('');
@@ -544,15 +1034,15 @@
             <head>
                 <title>NovaWallet Account Statement - ${escapeHtml(state.activeUser)}</title>
                 <style>
-                    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 40px; color: #111827; }
+                    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 40px; color: #0f172a; }
                     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #10b981; padding-bottom: 20px; margin-bottom: 30px; }
-                    .brand { font-size: 26px; font-weight: 900; color: #10b981; }
-                    .meta { text-align: right; font-size: 13px; color: #6b7280; }
+                    .brand { font-size: 26px; font-weight: 800; color: #10b981; }
+                    .meta { text-align: right; font-size: 13px; color: #64748b; }
                     .summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; background: #ecfdf5; padding: 18px; border-radius: 12px; margin-bottom: 30px; }
                     .card { font-size: 12px; color: #065f46; font-weight: 600; }
-                    .card .val { font-size: 20px; font-weight: 900; color: #047857; margin-top: 4px; }
+                    .card .val { font-size: 20px; font-weight: 800; color: #047857; margin-top: 4px; }
                     table { width: 100%; border-collapse: collapse; text-align: left; }
-                    th { padding: 10px; background: #f9fafb; font-size: 12px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+                    th { padding: 10px; background: #f8fafc; font-size: 12px; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0; }
                     @media print { body { padding: 0; } }
                 </style>
             </head>
@@ -560,7 +1050,7 @@
                 <div class="header">
                     <div>
                         <div class="brand">NovaWallet</div>
-                        <div style="font-size: 14px; color: #6b7280; font-weight: 600;">Official Account Statement</div>
+                        <div style="font-size: 14px; color: #64748b; font-weight: 600;">Official Digital Account Statement</div>
                     </div>
                     <div class="meta">
                         <div>Account: <strong>@${escapeHtml(state.activeUser)}</strong></div>
@@ -598,8 +1088,8 @@
                     </tbody>
                 </table>
 
-                <div style="margin-top: 40px; font-size: 11px; color: #9ca3af; text-align: center;">
-                    This is a computer-generated statement certified by NovaWallet Security Core.
+                <div style="margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center;">
+                    This is a certified digital statement verified by NovaWallet Atomic Transaction Engine.
                 </div>
                 <script>
                     window.onload = () => {
@@ -637,7 +1127,7 @@
         // Render Incoming
         if (incomingList) {
             if (!incoming.length) {
-                incomingList.innerHTML = `<p style="font-size:13px;color:var(--text-faint);padding:6px 0;">No incoming payment requests.</p>`;
+                incomingList.innerHTML = `<p style="font-size:12.5px;color:var(--text-faint);padding:6px 0;">No incoming payment requests.</p>`;
             } else {
                 incomingList.innerHTML = incoming.map(r => `
                     <div class="request-card" id="reqCard_${r.request_id}">
@@ -665,7 +1155,7 @@
                         </div>
 
                         <div class="request-otp" id="otpBox_${r.request_id}">
-                            <input type="text" id="otpInput_${r.request_id}" maxlength="4" placeholder="OTP" inputmode="numeric">
+                            <input type="text" id="otpInput_${r.request_id}" maxlength="4" placeholder="4-digit OTP" inputmode="numeric">
                             <button type="button" onclick="window.NovaApp.confirmApproveRequest('${r.request_id}')">Confirm</button>
                         </div>
                     </div>
@@ -695,7 +1185,7 @@
                         </div>
                         ${r.status === 'PENDING' ? `
                             <div style="margin-top: 8px; text-align: right;">
-                                <button type="button" class="btn-link" onclick="window.NovaApp.cancelRequest('${r.request_id}')">Cancel Request</button>
+                                <button type="button" class="btn-link" onclick="window.NovaApp.cancelRequest('${r.request_id}')" style="background:none;border:none;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer;">Cancel Request</button>
                             </div>
                         ` : ''}
                     </div>
@@ -712,12 +1202,19 @@
                 body: JSON.stringify({ request_id: requestId })
             });
 
-            showToast('Check terminal for OTP code!');
+            if (res.demo_otp) {
+                triggerSimulatedSms(res.demo_otp, res.amount);
+            }
+
+            showToast('Check notification banner for OTP code!');
             const card = document.getElementById(`reqCard_${requestId}`);
             if (card) {
                 card.classList.add('otp-open');
                 const inp = document.getElementById(`otpInput_${requestId}`);
-                inp?.focus();
+                if (inp) {
+                    if (res.demo_otp) inp.value = res.demo_otp;
+                    inp.focus();
+                }
             }
         } catch (err) {
             showToast(err.message, true);
@@ -812,10 +1309,18 @@
                     method: 'POST',
                     body: JSON.stringify({ to, amount: amt })
                 });
-                showToast('OTP code sent! Check terminal.');
+
+                if (res.demo_otp) {
+                    triggerSimulatedSms(res.demo_otp, amt);
+                }
+
+                showToast('Security OTP issued! Check incoming notification banner.');
                 document.getElementById('payStep1').style.display = 'none';
                 document.getElementById('payStep2').style.display = 'block';
-                document.getElementById('payOtp')?.focus();
+
+                // Clear OTP digit boxes and focus first
+                const firstBox = document.querySelector('.otp-box-digit[data-idx="0"]');
+                firstBox?.focus();
             } catch (err) {
                 showToast(err.message, true);
             } finally {
@@ -836,7 +1341,7 @@
             const category = document.getElementById('payCat')?.value;
             const otp = document.getElementById('payOtp')?.value.trim();
 
-            if (!otp) return showToast('Please enter the OTP', true);
+            if (!otp || otp.length < 4) return showToast('Please enter the 4-digit security code', true);
 
             toggleBtnLoading('confPayBtn', true);
             try {
@@ -850,8 +1355,14 @@
                 document.getElementById('payTo').value = '';
                 document.getElementById('payAmt').value = '';
                 document.getElementById('payOtp').value = '';
+                document.querySelectorAll('.otp-box-digit').forEach(b => { b.value = ''; });
                 togglePanel('payArea');
                 fetchUserData();
+
+                // Open receipt modal for instant gratification!
+                if (res.txn_id) {
+                    setTimeout(() => openReceipt(res.txn_id), 400);
+                }
             } catch (err) {
                 showToast(err.message, true);
             } finally {
@@ -912,7 +1423,7 @@
         if (!modal || !qrImg) return;
 
         const payLink = `${window.location.origin}${window.location.pathname}?payTo=${encodeURIComponent(state.activeUser || '')}`;
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payLink)}&color=111827&bgcolor=ffffff`;
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payLink)}&color=09090b&bgcolor=ffffff`;
 
         modal.showModal();
     }
@@ -930,7 +1441,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // Advanced Feature: Split Bill Modal & Logic
+    // Split Bill Engine
     // -------------------------------------------------------------------------
     function initSplitBill() {
         const actSplit = document.getElementById('actSplit');
@@ -997,7 +1508,6 @@
             }
         });
 
-        // Recompute on amount or checkbox change
         splitTotal?.addEventListener('input', updateSplitCalculation);
         splitIncludeSelf?.addEventListener('change', updateSplitCalculation);
 
@@ -1112,25 +1622,23 @@
     }
 
     // -------------------------------------------------------------------------
-    // Dialog Fallback for Light-Dismiss (<dialog closedby="any"> support)
+    // Dialog Fallback for Light-Dismiss
     // -------------------------------------------------------------------------
     function initDialogLightDismissFallbacks() {
         document.querySelectorAll('dialog.modal').forEach(dialog => {
-            if (!('closedBy' in HTMLDialogElement.prototype)) {
-                dialog.addEventListener('click', (event) => {
-                    if (event.target !== dialog) return;
-                    const rect = dialog.getBoundingClientRect();
-                    const isInside = (
-                        rect.top <= event.clientY &&
-                        event.clientY <= rect.top + rect.height &&
-                        rect.left <= event.clientX &&
-                        event.clientX <= rect.left + rect.width
-                    );
-                    if (!isInside) {
-                        dialog.close();
-                    }
-                });
-            }
+            dialog.addEventListener('click', (event) => {
+                if (event.target !== dialog) return;
+                const rect = dialog.getBoundingClientRect();
+                const isInside = (
+                    rect.top <= event.clientY &&
+                    event.clientY <= rect.top + rect.height &&
+                    rect.left <= event.clientX &&
+                    event.clientX <= rect.left + rect.width
+                );
+                if (!isInside) {
+                    dialog.close();
+                }
+            });
         });
     }
 
@@ -1140,7 +1648,11 @@
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         initAuth();
-        initFilters();
+        initUpiAndBankControls();
+        initQuickAmountPills();
+        initSmsBannerAndOtpBoxes();
+        initFiltersAndSearch();
+        initReceiptModal();
         initExport();
         initPanels();
         initSplitBill();
@@ -1150,6 +1662,7 @@
             document.getElementById('auth').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             document.getElementById('userBadge').textContent = '@' + state.activeUser.toLowerCase();
+            updateUpiVpa(state.activeUser);
             fetchUserData();
             checkDeepLinkPay();
         }
@@ -1162,7 +1675,9 @@
         initApproveRequest,
         confirmApproveRequest,
         declineRequest,
-        cancelRequest
+        cancelRequest,
+        selectPeer,
+        openReceipt
     };
 
 })();

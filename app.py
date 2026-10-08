@@ -134,6 +134,7 @@ def utcnow() -> datetime:
 # --------------------------------------------------------------------------- #
 class User(db.Model):
     __tablename__ = "users"
+    __allow_unmapped__ = True
 
     id: Any = db.Column(db.Integer, primary_key=True)
     username: Any = db.Column(db.String(32), nullable=False)
@@ -186,6 +187,7 @@ class User(db.Model):
 
 class Wallet(db.Model):
     __tablename__ = "wallets"
+    __allow_unmapped__ = True
 
     id: Any = db.Column(db.Integer, primary_key=True)
     user_id: Any = db.Column(
@@ -229,6 +231,7 @@ class Transaction(db.Model):
     """Immutable ledger entry. ``sender`` is NULL for bank loads."""
 
     __tablename__ = "transactions"
+    __allow_unmapped__ = True
 
     KIND_LOAD: str = "LOAD"
     KIND_TRANSFER: str = "TRANSFER"
@@ -287,6 +290,7 @@ class PaymentRequest(db.Model):
     """'Requester asks Payer for money'. Split bills create one per participant."""
 
     __tablename__ = "payment_requests"
+    __allow_unmapped__ = True
 
     PENDING: str = "PENDING"
     APPROVED: str = "APPROVED"
@@ -360,6 +364,7 @@ class OtpChallenge(db.Model):
     """One active OTP per user, bound to a specific payment."""
 
     __tablename__ = "otp_challenges"
+    __allow_unmapped__ = True
 
     PURPOSE_PAY: str = "PAY"
     PURPOSE_APPROVE: str = "APPROVE"
@@ -501,7 +506,7 @@ def hash_otp(code: str) -> str:
     return hmac.new(key, code.encode(), hashlib.sha256).hexdigest()
 
 
-def issue_otp(user: User, purpose: str, receiver_id: int, amount_paise: int, request_id=None) -> None:
+def issue_otp(user: User, purpose: str, receiver_id: int, amount_paise: int, request_id=None) -> str:
     """Create (or replace) the user's OTP challenge and 'send' it via mock SMS."""
     code = f"{secrets.randbelow(9000) + 1000}"
     challenge = db.session.get(OtpChallenge, user.id) or OtpChallenge(user_id=user.id)
@@ -521,9 +526,13 @@ def issue_otp(user: User, purpose: str, receiver_id: int, amount_paise: int, req
     print("[MOCK SMS API] Intercepted outgoing OTP request.")
     print(f"[DESTINATION] User: {user.username} ({user.phone or 'no phone on file'})")
     print(f"[PAYLOAD] Your NovaWallet Security Code is: {code}")
-    print(f"[CONTEXT] {purpose} {fmt_inr(amount_paise)} | valid {int(OTP_TTL.total_seconds() // 60)} min")
+    try:
+        print(f"[CONTEXT] {purpose} {fmt_inr(amount_paise)} | valid {int(OTP_TTL.total_seconds() // 60)} min")
+    except UnicodeEncodeError:
+        print(f"[CONTEXT] {purpose} INR {to_rupees(amount_paise):.2f} | valid {int(OTP_TTL.total_seconds() // 60)} min")
     print("[STATUS] 200 OK - Message logged to secure terminal.")
     print("=" * 55 + "\n", flush=True)
+    return code
 
 
 def verify_otp(user: User, code: str, purpose: str, receiver_id: int, amount_paise: int, request_id=None):
@@ -898,8 +907,14 @@ def request_pay_otp():
             return err("This request is no longer pending.", 404)
         if user.wallet.balance_paise < pr.amount_paise:
             return err("Insufficient Wallet Funds!")
-        issue_otp(user, OtpChallenge.PURPOSE_APPROVE, pr.requester_id, pr.amount_paise, pr.request_id)
-        return ok("OTP Generated via Mock SMS Gateway!")
+        code = issue_otp(user, OtpChallenge.PURPOSE_APPROVE, pr.requester_id, pr.amount_paise, pr.request_id)
+        return ok(
+            "OTP Generated via Mock SMS Gateway!",
+            demo_otp=code,
+            amount=to_rupees(pr.amount_paise),
+            purpose="APPROVE",
+            receiver=pr.requester.username,
+        )
 
     receiver = find_user(body.get("to", ""))
     if not receiver:
@@ -913,8 +928,14 @@ def request_pay_otp():
     if user.wallet.balance_paise < amt:
         return err("Insufficient Wallet Funds!")
 
-    issue_otp(user, OtpChallenge.PURPOSE_PAY, receiver.id, amt)
-    return ok("OTP Generated via Mock SMS Gateway!")
+    code = issue_otp(user, OtpChallenge.PURPOSE_PAY, receiver.id, amt)
+    return ok(
+        "OTP Generated via Mock SMS Gateway!",
+        demo_otp=code,
+        amount=to_rupees(amt),
+        purpose="PAY",
+        receiver=receiver.username,
+    )
 
 
 @app.route("/api/confirm_pay", methods=["POST"])
@@ -1251,11 +1272,33 @@ def import_json_command():
     import_legacy_json()
 
 
+def seed_demo_accounts() -> None:
+    """Ensure standard demo accounts (Priyanshu, Prakhar) exist with password 'Nova@123'
+    so reviewers can easily log in and test peer-to-peer transfers immediately."""
+    demos = [
+        ("Priyanshu", "priyanshu@novawallet.dev", "9876543210", 7500000),
+        ("Prakhar", "prakhar@novawallet.dev", "9876543211", 5000000),
+    ]
+    for name, email, phone, bal_paise in demos:
+        u = find_user(name)
+        if not u:
+            u = User(username=name, email=email, phone=phone)
+            u.set_password("Nova@123")
+            u.wallet = Wallet(balance_paise=bal_paise, bank_balance_paise=DEFAULT_BANK_PAISE)
+            db.session.add(u)
+        else:
+            u.set_password("Nova@123")
+            if not u.wallet:
+                u.wallet = Wallet(balance_paise=bal_paise, bank_balance_paise=DEFAULT_BANK_PAISE)
+        db.session.commit()
+
+
 def init_db() -> None:
     with app.app_context():
         db.create_all()
         if not User.query.first() and os.path.exists(LEGACY_JSON_FILE):
             import_legacy_json()
+        seed_demo_accounts()
 
 
 init_db()
