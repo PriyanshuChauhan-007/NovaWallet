@@ -145,37 +145,48 @@
     }
 
     // -------------------------------------------------------------------------
-    // Theme Management
+    // Theme Management (100% Robust Light / Dark Mode Synchronization)
     // -------------------------------------------------------------------------
-    function initTheme() {
-        const meta = document.querySelector('meta[name="color-scheme"]');
-        const stored = localStorage.getItem('color-scheme');
-        if (stored && meta) {
-            meta.content = stored;
+    function applyTheme(target) {
+        let effective = target;
+        if (target === 'light dark') {
+            effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
+        document.documentElement.setAttribute('data-theme', effective);
+        document.documentElement.classList.toggle('dark', effective === 'dark');
+        if (document.body) {
+            document.body.setAttribute('data-theme', effective);
+            document.body.classList.toggle('dark', effective === 'dark');
+        }
+
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.content = target;
+        localStorage.setItem('color-scheme', target);
+
+        // Re-render chart to adapt slate colors
+        if (state.userData?.stats) {
+            drawChart(Number(state.userData.stats.in || 0), Number(state.userData.stats.out || 0));
+        }
+    }
+
+    function initTheme() {
+        const stored = localStorage.getItem('color-scheme') || 'light dark';
+        applyTheme(stored);
+
+        // React to system preference changes when in automatic mode
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            const cur = localStorage.getItem('color-scheme');
+            if (!cur || cur === 'light dark') {
+                applyTheme('light dark');
+            }
+        });
 
         document.querySelectorAll('[data-action="toggle-theme"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const current = meta.content;
-                let target;
-
-                if (current === 'light dark') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    target = prefersDark ? 'light' : 'dark';
-                } else if (current === 'dark') {
-                    target = 'light';
-                } else {
-                    target = 'dark';
-                }
-
-                meta.content = target;
-                localStorage.setItem('color-scheme', target);
+                const currentEffective = document.documentElement.getAttribute('data-theme') || 'light';
+                const target = currentEffective === 'dark' ? 'light' : 'dark';
+                applyTheme(target);
                 showToast(`Switched to ${target} mode`);
-
-                // Re-render chart to adapt slate colors
-                if (state.userData?.stats) {
-                    drawChart(Number(state.userData.stats.in || 0), Number(state.userData.stats.out || 0));
-                }
             });
         });
     }
@@ -506,7 +517,7 @@
         }
 
         const ctx = canvas.getContext('2d');
-        const isDark = document.querySelector('meta[name="color-scheme"]')?.content === 'dark';
+        const isDark = (document.documentElement.getAttribute('data-theme') === 'dark') || document.documentElement.classList.contains('dark') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.getAttribute('data-theme') !== 'light');
         const centerBadge = document.getElementById('chartCenterVal');
 
         const hasFlow = inVal > 0 || outVal > 0;
@@ -2157,8 +2168,8 @@
         }
 
         const recvEl = document.getElementById('mpinReceiverDisplay');
-        const amtEl = document.getElementById('mpinAmountDisplay');
-        const bankEl = document.getElementById('mpinBankDisplay');
+        const amtEl = document.getElementById('mpinPayAmtDisplay') || document.getElementById('mpinAmountDisplay');
+        const bankEl = document.getElementById('mpinDebitFromDisplay') || document.getElementById('mpinBankDisplay');
         const errEl = document.getElementById('mpinError');
 
         if (recvEl) recvEl.textContent = receiver || 'Merchant';
@@ -2171,7 +2182,7 @@
     }
 
     function updateMpinDots() {
-        const dots = document.querySelectorAll('.pin-dot');
+        const dots = document.querySelectorAll('.mpin-dot, .pin-dot');
         dots.forEach((dot, idx) => {
             if (idx < mpinState.currentPin.length) {
                 dot.classList.add('filled');
@@ -2183,9 +2194,9 @@
 
     function initMpinModal() {
         const modal = document.getElementById('mpinModal');
-        const closeBtn = document.getElementById('closeMpinModalBtn');
-        const backspaceBtn = document.getElementById('mpinBackspaceBtn');
-        const submitBtn = document.getElementById('mpinSubmitBtn');
+        const closeBtn = document.getElementById('closeMpinModalBtn') || document.getElementById('closeMpinBtn');
+        const backspaceBtn = document.getElementById('mpinKeyClear') || document.getElementById('mpinBackspaceBtn');
+        const submitBtn = document.getElementById('mpinKeySubmit') || document.getElementById('mpinSubmitBtn');
         const errEl = document.getElementById('mpinError');
 
         closeBtn?.addEventListener('click', () => {
@@ -2194,9 +2205,9 @@
         });
 
         // Numeric keypad buttons
-        document.querySelectorAll('.mpin-num-btn').forEach(btn => {
+        document.querySelectorAll('.num-key[data-key], .num-key[data-num], .mpin-num-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const num = btn.dataset.num;
+                const num = btn.dataset.key || btn.dataset.num || btn.textContent.trim();
                 if (!num || mpinState.currentPin.length >= 4) return;
                 playKeypadClick();
                 mpinState.currentPin += num;
@@ -2470,8 +2481,8 @@
 
         activeScratchingReward = { id: rewardId, amount, title, claimed: false };
 
-        const amtEl = document.getElementById('scratchRewardAmount');
-        const descEl = document.getElementById('scratchRewardDesc');
+        const amtEl = document.getElementById('scratchPrizeAmt') || document.getElementById('scratchRewardAmount');
+        const descEl = document.getElementById('scratchPrizeTitle') || document.getElementById('scratchRewardDesc');
         const claimBtn = document.getElementById('btnClaimScratchReward');
 
         if (amtEl) amtEl.textContent = formatINR(amount);

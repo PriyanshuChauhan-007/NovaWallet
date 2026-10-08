@@ -3,8 +3,11 @@
    Inspired by Wise, Linear, and RazorpayX
    ========================================================================== */
 
-:root {
-    color-scheme: light dark;
+:root,
+[data-theme="light"],
+html[data-theme="light"],
+body[data-theme="light"] {
+    color-scheme: light;
 
     /* Primary Accent */
     --primary: #10b981;
@@ -32,11 +35,11 @@
     --border: #e2e8f0;
     --border-strong: #cbd5e1;
     --border-hairline: rgba(0, 0, 0, 0.08);
-    --input-bg: #f8fafc;
+    --input-bg: #ffffff;
     --input-border: #cbd5e1;
 
     --text: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --text-muted: #64748b;
     --text-faint: #94a3b8;
 
@@ -44,9 +47,9 @@
     --btn-primary-text: #ffffff;
     --btn-primary-hover: #047857;
 
-    --action-btn-bg: #f4f4f5;
-    --action-btn-border: #e4e4e7;
-    --action-btn-icon: #52525b;
+    --action-btn-bg: #ffffff;
+    --action-btn-border: #e2e8f0;
+    --action-btn-icon: #475569;
 
     --card-grad: linear-gradient(135deg, #065f46 0%, #047857 100%);
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -60,6 +63,11 @@
 }
 
 /* --- Dark Theme (Deep Obsidian / Zinc Engineering Surface) --- */
+[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"],
+html.dark,
+body.dark,
 :root:has(> head > meta[name="color-scheme"][content="dark"]) {
     color-scheme: dark;
     --bg: #09090b;
@@ -95,7 +103,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root:has(> head > meta[name="color-scheme"][content="light dark"]) {
+    :root:not([data-theme="light"]):has(> head > meta[name="color-scheme"][content="light dark"]),
+    html:not([data-theme="light"]):not([data-theme="dark"]) {
         color-scheme: dark;
         --bg: #09090b;
         --bg-grid: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
@@ -273,11 +282,34 @@ body {
 }
 
 .theme-toggle .icon-sun { display: none; }
-:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle .icon-sun { display: block; }
-:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle .icon-moon { display: none; }
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+
+[data-theme="dark"] .theme-toggle .icon-sun,
+html[data-theme="dark"] .theme-toggle .icon-sun,
+body[data-theme="dark"] .theme-toggle .icon-sun,
+html.dark .theme-toggle .icon-sun,
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle .icon-sun {
+    display: block !important;
+}
+
+[data-theme="dark"] .theme-toggle .icon-moon,
+html[data-theme="dark"] .theme-toggle .icon-moon,
+body[data-theme="dark"] .theme-toggle .icon-moon,
+html.dark .theme-toggle .icon-moon,
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle .icon-moon {
+    display: none !important;
+}
+
 @media (prefers-color-scheme: dark) {
-    :root:has(> head > meta[name="color-scheme"][content="light dark"]) .theme-toggle .icon-sun { display: block; }
-    :root:has(> head > meta[name="color-scheme"][content="light dark"]) .theme-toggle .icon-moon { display: none; }
+    :root:not([data-theme="light"]) .theme-toggle .icon-sun,
+    html:not([data-theme="light"]):not([data-theme="dark"]) .theme-toggle .icon-sun {
+        display: block !important;
+    }
+    :root:not([data-theme="light"]) .theme-toggle .icon-moon,
+    html:not([data-theme="light"]):not([data-theme="dark"]) .theme-toggle .icon-moon {
+        display: none !important;
+    }
 }
 
 /* ==========================================================================
@@ -863,13 +895,13 @@ input::placeholder {
 .bank-title {
     font-size: 13px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text);
 }
 
 .verified-pill {
-    background: rgba(16, 185, 129, 0.25);
-    color: #a7f3d0;
-    border: 1px solid rgba(16, 185, 129, 0.4);
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid var(--primary-border);
     font-size: 9.5px;
     font-weight: 800;
     padding: 1px 6px;
@@ -882,7 +914,7 @@ input::placeholder {
 
 .bank-sub {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--text-muted);
 }
 
 .bank-strip-right {
@@ -899,20 +931,20 @@ input::placeholder {
 
 .bank-amt-label {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--text-muted);
     text-transform: uppercase;
 }
 
 .bank-amt-val {
     font-size: 14px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text);
 }
 
 .bank-eye-btn {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -920,7 +952,21 @@ input::placeholder {
     transition: color 0.2s;
 }
 
-.bank-eye-btn:hover { color: #ffffff; }
+.bank-eye-btn:hover { color: var(--text); }
+
+/* If bank-strip is embedded inside balance-card directly */
+.balance-card .bank-title,
+.balance-card .bank-amt-val {
+    color: #ffffff;
+}
+.balance-card .bank-sub,
+.balance-card .bank-amt-label,
+.balance-card .bank-eye-btn {
+    color: rgba(255, 255, 255, 0.7);
+}
+.balance-card .bank-eye-btn:hover {
+    color: #ffffff;
+}
 
 /* ==========================================================================
    Quick Actions Bar (Restrained, Unified Fintech Surface)
@@ -2311,7 +2357,7 @@ form#authForm[data-mode="signup"] .signup-only {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
-    color: #94a3b8;
+    color: rgba(255, 255, 255, 0.85);
     display: block;
     margin-bottom: 2px;
 }
@@ -2337,7 +2383,7 @@ form#authForm[data-mode="signup"] .signup-only {
     font-family: monospace;
     font-size: 13px;
     letter-spacing: 0.15em;
-    color: #94a3b8;
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .card-holder-group, .card-expiry-group {
@@ -2349,7 +2395,7 @@ form#authForm[data-mode="signup"] .signup-only {
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.08em;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .card-holder-name {
@@ -2357,14 +2403,14 @@ form#authForm[data-mode="signup"] .signup-only {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.12em;
-    color: #e2e8f0;
+    color: #ffffff;
 }
 
 .card-expiry-val {
     font-family: monospace;
     font-size: 12px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #ffffff;
 }
 
 /* HDFC Core Banking Row directly beneath Titanium Card */
@@ -3247,108 +3293,179 @@ form#authForm[data-mode="signup"] .signup-only {
     transform: scale(1.15);
 }
 
-/* 4. NPCI UPI 2.0 MPIN Sheet */
+/* ==========================================================================
+   Tier-1 Enterprise Fintech Components (CRED, Google Pay, Jupiter, RazorpayX)
+   100% Seamless Light & Dark Mode Compatibility
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. NPCI UPI 2.0 MPIN Bottom Sheet / Modal
+   -------------------------------------------------------------------------- */
 .mpin-sheet-modal::backdrop {
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 .mpin-sheet-card {
-    background: #0f172a;
-    color: #f8fafc;
-    border: 1px solid #334155;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
     border-radius: 20px;
     width: 100%;
     max-width: 380px;
     padding: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-xl);
     text-align: center;
 }
+.mpin-header,
+.mpin-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.mpin-header h3,
+.mpin-sheet-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text) !important;
+}
+.npci-brand-pill,
 .mpin-npci-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 3px 10px;
     border-radius: var(--radius-pill);
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #10b981;
-    font-size: 10px;
+    background: var(--primary-soft) !important;
+    border: 1px solid var(--primary-border) !important;
+    color: var(--primary) !important;
+    font-size: 10.5px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    margin-bottom: 12px;
 }
-.mpin-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
+.npci-logo {
+    background: var(--primary);
+    color: var(--primary-text-on-dark);
+    font-weight: 900;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 9px;
 }
-.mpin-sheet-header h3 {
-    margin: 0;
-    font-size: 16px;
+.npci-title {
+    color: var(--text-secondary);
     font-weight: 700;
-    color: #ffffff;
 }
+.mpin-txn-summary,
 .mpin-txn-context {
-    background: #1e293b;
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
     border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 20px;
-    text-align: left;
+    padding: 14px;
+    margin-bottom: 18px;
+    text-align: center;
+}
+.mpin-payer-tag {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-muted) !important;
+    display: block;
+}
+.mpin-pay-amt,
+.mpin-ctx-amt {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text) !important;
+    margin: 4px 0;
+    letter-spacing: -0.5px;
+}
+.mpin-receiver {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary) !important;
+    display: block;
+}
+.mpin-debit-from {
+    font-size: 11px;
+    color: var(--text-muted) !important;
+    display: block;
+    margin-top: 4px;
 }
 .mpin-ctx-row {
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--text-muted) !important;
     margin-bottom: 4px;
 }
 .mpin-ctx-row strong {
-    color: #f8fafc;
+    color: var(--text) !important;
 }
-.mpin-ctx-amt {
-    font-size: 22px;
-    font-weight: 800;
-    color: #10b981;
-    margin-top: 4px;
-    text-align: center;
+.mpin-pin-section {
+    margin-bottom: 8px;
 }
-
+.mpin-prompt-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary) !important;
+    display: block;
+}
 .mpin-dots-row {
     display: flex;
     justify-content: center;
     gap: 16px;
-    margin: 20px 0 16px 0;
+    margin: 16px 0 12px 0;
+    transition: transform 0.15s ease;
 }
+.mpin-dot,
 .pin-dot {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    border: 2px solid #475569;
+    border: 2px solid var(--border-strong) !important;
     background: transparent;
     transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.mpin-dot.filled,
 .pin-dot.filled {
-    background: #10b981;
-    border-color: #10b981;
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
     transform: scale(1.15);
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 10px var(--primary-soft);
 }
-
+.mpin-demo-hint {
+    background: var(--surface-subtle);
+    border: 1px dashed var(--border-strong);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+.mpin-demo-hint strong {
+    color: var(--primary);
+    font-weight: 800;
+}
+.mpin-numpad,
 .mpin-keypad {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-top: 16px;
+    gap: 10px;
+    margin-top: 12px;
 }
-.mpin-num-btn, .mpin-action-btn {
-    height: 54px;
+.num-key,
+.mpin-num-btn,
+.mpin-action-btn {
+    height: 52px;
     border-radius: 12px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #f8fafc;
-    font-size: 20px;
-    font-weight: 600;
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    font-size: 19px;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -3357,26 +3474,48 @@ form#authForm[data-mode="signup"] .signup-only {
     user-select: none;
     -webkit-user-select: none;
 }
-.mpin-num-btn:active, .mpin-action-btn:active {
-    background: #334155;
+.num-key:hover,
+.mpin-num-btn:hover,
+.mpin-action-btn:hover {
+    background: var(--surface-hover) !important;
+    border-color: var(--border-strong) !important;
+}
+.num-key:active,
+.mpin-num-btn:active,
+.mpin-action-btn:active {
     transform: scale(0.96);
 }
-.mpin-action-btn.submit-btn {
-    background: #059669;
-    border-color: #10b981;
-    color: #ffffff;
+.num-clear {
+    color: var(--text-secondary) !important;
+    font-size: 18px;
 }
+.num-submit,
+.mpin-action-btn.submit-btn {
+    background: var(--btn-primary-bg) !important;
+    border-color: var(--primary) !important;
+    color: var(--btn-primary-text) !important;
+    font-size: 18px;
+}
+.num-submit:hover,
 .mpin-action-btn.submit-btn:hover {
-    background: #10b981;
+    background: var(--btn-primary-hover) !important;
 }
 .mpin-error-msg {
-    color: #ef4444;
+    color: var(--danger) !important;
     font-size: 11px;
     min-height: 16px;
     margin-top: 6px;
+    font-weight: 600;
 }
 
-/* 5. CRED-style Mystery Scratch Cards */
+/* --------------------------------------------------------------------------
+   2. CRED-style Mystery Scratch Cards & Rewards Hub
+   -------------------------------------------------------------------------- */
+.rewards-hub-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
 .rewards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -3391,61 +3530,84 @@ form#authForm[data-mode="signup"] .signup-only {
     cursor: pointer;
     overflow: hidden;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    border: 1px solid #334155;
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
 }
 .reward-card-tile:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong) !important;
 }
 .reward-card-tile.unclaimed {
-    background: linear-gradient(135deg, #374151 0%, #111827 50%, #4b5563 100%);
-    border: 1px solid #9ca3af;
+    background: linear-gradient(135deg, var(--surface-subtle) 0%, var(--surface-hover) 100%) !important;
+    border: 1px dashed var(--primary) !important;
+}
+.reward-card-tile.reward-tile-claimed {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
 }
 .reward-shimmer-badge {
     font-size: 28px;
     margin-bottom: 6px;
     display: block;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 .reward-card-tile h4 {
     margin: 0;
     font-size: 12px;
     font-weight: 700;
-    color: #f3f4f6;
+    color: var(--text) !important;
 }
 .reward-card-tile p {
     margin: 4px 0 0 0;
-    font-size: 10px;
-    color: #9ca3af;
+    font-size: 10.5px;
+    color: var(--text-muted) !important;
 }
 .reward-claimed-amt {
     font-size: 16px;
     font-weight: 800;
-    color: #10b981;
+    color: var(--primary) !important;
     margin-top: 4px;
 }
 
-/* Scratch Card Canvas Modal */
+/* Interactive HTML5 Canvas Scratch Card Modal */
+.scratch-canvas-card,
 .scratch-card-modal-content {
-    background: #0b0f19;
-    border: 1px solid #1f2937;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
     border-radius: 20px;
     padding: 24px;
     text-align: center;
-    max-width: 340px;
+    max-width: 360px;
     width: 100%;
+    box-shadow: var(--shadow-xl);
 }
+.cred-perk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--accent-amber);
+    text-transform: uppercase;
+}
+.scratch-stage,
 .scratch-arena {
     position: relative;
-    width: 260px;
-    height: 260px;
+    width: 280px;
+    height: 280px;
     margin: 16px auto;
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-    background: #111827;
+    box-shadow: var(--shadow-md);
+    background: var(--surface-subtle);
 }
+.scratch-prize-card,
 .scratch-prize-layer {
     position: absolute;
     inset: 0;
@@ -3455,24 +3617,44 @@ form#authForm[data-mode="signup"] .signup-only {
     justify-content: center;
     padding: 20px;
     background: radial-gradient(circle, #065f46 0%, #022c22 100%);
-    color: #ffffff;
+    color: #ffffff !important;
+    text-align: center;
 }
-.scratch-prize-amt {
-    font-size: 32px;
-    font-weight: 900;
-    color: #34d399;
-    text-shadow: 0 0 15px rgba(52, 211, 153, 0.6);
+.prize-emoji {
+    font-size: 38px;
+    margin-bottom: 2px;
 }
-.scratch-prize-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin-top: 6px;
-    color: #ffffff;
-}
+.prize-sub,
 .scratch-prize-sub {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.85) !important;
+    text-transform: uppercase;
+}
+.prize-amt,
+.scratch-prize-amt {
+    font-size: 34px;
+    font-weight: 900;
+    color: #34d399 !important;
+    margin: 4px 0;
+    text-shadow: 0 0 15px rgba(52, 211, 153, 0.5);
+}
+.prize-note,
+.scratch-prize-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff !important;
+    margin-bottom: 6px;
+}
+.prize-credited-badge {
+    background: rgba(16, 185, 129, 0.25);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #a7f3d0 !important;
     font-size: 11px;
-    color: #9ca3af;
-    margin-top: 4px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
 }
 #scratchCanvas {
     position: absolute;
@@ -3481,14 +3663,27 @@ form#authForm[data-mode="signup"] .signup-only {
     z-index: 5;
     touch-action: none;
 }
+.scratch-instructions {
+    color: var(--text-muted) !important;
+    font-size: 12px;
+    margin-top: 10px;
+    text-align: center;
+}
 
-/* 6. Card Reveal Modal */
+/* --------------------------------------------------------------------------
+   3. Card PAN & CVV Reveal Modal
+   -------------------------------------------------------------------------- */
+.reveal-card-modal {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
 .reveal-virtual-card {
     background: linear-gradient(135deg, #09090b 0%, #18181b 50%, #27272a 100%);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
     padding: 22px;
-    color: #ffffff;
+    color: #ffffff !important;
     margin: 16px 0;
     box-shadow: 0 15px 30px rgba(0,0,0,0.4);
     letter-spacing: 0.5px;
@@ -3502,12 +3697,18 @@ form#authForm[data-mode="signup"] .signup-only {
     color: #a1a1aa;
     margin-bottom: 24px;
 }
+.rupay-wordmark {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #38bdf8;
+}
 .reveal-pan {
     font-family: monospace;
     font-size: 20px;
     letter-spacing: 2.5px;
     font-weight: 700;
-    color: #f4f4f5;
+    color: #f4f4f5 !important;
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     margin-bottom: 24px;
 }
@@ -3519,75 +3720,80 @@ form#authForm[data-mode="signup"] .signup-only {
 .rev-label {
     display: block;
     font-size: 9px;
-    color: #71717a;
+    color: #71717a !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .reveal-details-row strong {
-    color: #e4e4e7;
+    color: #e4e4e7 !important;
     font-weight: 600;
 }
 .cvv-badge {
-    background: #ffffff;
+    background: #ffffff !important;
     color: #09090b !important;
     padding: 2px 6px;
     border-radius: 4px;
     font-family: monospace;
 }
 
-/* 7. WhatsApp & GPay Branded Receipt Modal */
+/* --------------------------------------------------------------------------
+   4. WhatsApp & Google Pay Branded Receipt Modal
+   -------------------------------------------------------------------------- */
 .share-receipt-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
     max-width: 400px;
     width: 100%;
     padding: 24px;
     border-radius: 20px;
 }
 .gpay-receipt-billboard {
-    background: #ffffff;
-    color: #0f172a;
+    background: var(--surface-subtle) !important;
+    color: var(--text) !important;
     border-radius: 16px;
     padding: 24px 20px;
     text-align: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border) !important;
     margin: 16px 0;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
 }
 .gpay-tick-circle {
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: #059669;
+    background: var(--btn-primary-bg) !important;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 12px auto;
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+    box-shadow: 0 4px 12px var(--primary-soft);
 }
 .gpay-status-text {
     display: block;
     font-size: 13px;
-    font-weight: 700;
-    color: #059669;
+    font-weight: 800;
+    color: var(--primary) !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .gpay-bill-amt {
     font-size: 32px;
     font-weight: 900;
-    color: #0f172a;
+    color: var(--text) !important;
     margin: 8px 0;
 }
 .gpay-to-wrap {
     font-size: 13px;
-    color: #64748b;
+    color: var(--text-muted) !important;
     margin-bottom: 20px;
 }
 .gpay-to-wrap strong {
-    color: #0f172a;
+    color: var(--text) !important;
     font-weight: 700;
 }
 .gpay-meta-table {
-    border-top: 1px dashed #cbd5e1;
+    border-top: 1px dashed var(--border-strong) !important;
     padding-top: 14px;
     display: flex;
     flex-direction: column;
@@ -3600,24 +3806,605 @@ form#authForm[data-mode="signup"] .signup-only {
     font-size: 12px;
 }
 .gpay-meta-table .meta-item span {
-    color: #64748b;
+    color: var(--text-muted) !important;
 }
 .gpay-meta-table .meta-item strong {
-    color: #0f172a;
+    color: var(--text) !important;
+}
+.receipt-body {
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   5. BBPS Utility BillPay Panel
+   -------------------------------------------------------------------------- */
+.bills-panel {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+.bills-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.bills-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text) !important;
+}
+.bbps-logo-pill {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+.bbps-logo-pill span {
+    color: #f97316 !important;
+}
+.bill-due-badge {
+    background: var(--danger-soft);
+    color: var(--danger) !important;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.bill-categories-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+.bill-cat-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.bill-cat-btn:hover {
+    background: var(--surface-hover) !important;
+    color: var(--text) !important;
+}
+.bill-cat-btn.active {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+.bill-fetch-result {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 14px;
+}
+.bill-biller-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text) !important;
+}
+.bill-consumer-sub {
+    font-size: 11px;
+    color: var(--text-muted) !important;
+}
+.bill-amt-block span {
+    font-size: 11px;
+    color: var(--text-muted) !important;
+}
+.bill-amt-block strong {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. Jupiter / Mercury Card Management Controls Strip
+   -------------------------------------------------------------------------- */
+.card-controls-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
+    padding: 12px 16px;
+    margin-bottom: 24px;
+}
+.card-ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-ui);
+    color: var(--text-secondary) !important;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.card-ctrl-btn:hover {
+    background: var(--surface-hover) !important;
+    color: var(--text) !important;
+    border-color: var(--border-strong) !important;
+}
+.card-ctrl-btn.active-freeze {
+    background: rgba(56, 189, 248, 0.15) !important;
+    border-color: #38bdf8 !important;
+    color: #0284c7 !important;
+}
+[data-theme="dark"] .card-ctrl-btn.active-freeze,
+html.dark .card-ctrl-btn.active-freeze {
+    color: #38bdf8 !important;
+}
+.card-frozen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(14, 165, 233, 0.35);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-card);
+    color: #ffffff !important;
+    font-weight: 800;
+    font-size: 16px;
+    gap: 6px;
+}
+.card-frozen-overlay span {
+    font-size: 11px;
+    color: #e0f2fe !important;
+    font-weight: 600;
+}
+.frozen-badge {
+    background: rgba(56, 189, 248, 0.15);
+    color: #0284c7 !important;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+[data-theme="dark"] .frozen-badge,
+html.dark .frozen-badge {
+    color: #38bdf8 !important;
+}
+.card-limit-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted) !important;
+}
+.limit-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted) !important;
+}
+.ctrl-slider,
+.slider-styled {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-strong);
+    outline: none;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+.ctrl-slider::-webkit-slider-thumb,
+.slider-styled::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.1s ease;
 }
 .modal-actions-row {
     display: flex;
     gap: 10px;
-    margin-top: 14px;
+    margin-top: 16px;
 }
 .modal-actions-row button {
     flex: 1;
 }
 
-/* Confetti Canvas Layer */
-#confettiCanvas {
-    position: fixed;
-    inset: 0;
+/* --------------------------------------------------------------------------
+   7. Nova AI Financial Analyst & Copilot
+   -------------------------------------------------------------------------- */
+.side-card.nova-ai-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+.ai-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text) !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ai-model-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-muted) !important;
+    background: var(--surface-subtle);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+.ai-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: inline-block;
+    box-shadow: 0 0 6px var(--primary);
+}
+.audit-badge {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--primary-soft);
+    color: var(--primary) !important;
+    border: 1px solid var(--primary-border);
+}
+.ai-audit-box {
+    background: var(--primary-soft) !important;
+    border: 1px solid var(--primary-border) !important;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+.ai-audit-list li {
+    font-size: 12px;
+    color: var(--text) !important;
+    margin-bottom: 4px;
+    position: relative;
+    padding-left: 14px;
+}
+.ai-audit-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: 800;
+}
+.ai-prompt-btn {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.ai-prompt-btn:hover {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary-border) !important;
+    color: var(--primary) !important;
+}
+.ai-chat-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+.ai-chat-msg {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.ai-chat-msg.user {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    align-self: flex-end;
+}
+.ai-chat-msg.ai {
+    background: var(--primary-soft) !important;
+    border: 1px solid var(--primary-border) !important;
+    color: var(--text) !important;
+    align-self: flex-start;
+}
+.ai-chat-input-wrap {
+    display: flex;
+    gap: 8px;
+}
+.ai-chat-input {
+    flex: 1;
+    background: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--text) !important;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+}
+.ai-send-btn {
+    background: var(--btn-primary-bg) !important;
+    color: var(--btn-primary-text) !important;
+    border: none;
+    border-radius: 8px;
+    padding: 0 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   8. In-App Notifications Dropdown Panel
+   -------------------------------------------------------------------------- */
+.notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    background: var(--surface) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    overflow: hidden;
+}
+.notif-header {
+    background: var(--surface-subtle) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text) !important;
+}
+.notif-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text) !important;
+}
+.notif-desc {
+    font-size: 11px;
+    color: var(--text-muted) !important;
+    margin-top: 2px;
+}
+.notif-time {
+    font-size: 10px;
+    color: var(--text-faint) !important;
+    margin-top: 4px;
+}
+.notif-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.notif-item:hover {
+    background: var(--surface-hover) !important;
+}
+.notif-item.unread {
+    background: var(--primary-soft) !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. Side Cards, Vaults & Secondary Widgets
+   -------------------------------------------------------------------------- */
+.analytics-card,
+.contacts-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+.bullet-pulse {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    margin-right: 4px;
+}
+.input-prefix-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-prefix {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted) !important;
+    font-weight: 700;
+    font-size: 14px;
     pointer-events: none;
-    z-index: 99999;
+}
+.input-prefix-wrap input {
+    padding-left: 28px !important;
+}
+.qr-amt-group {
+    margin: 12px 0;
+}
+.section-title-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Eye Visibility Icons */
+.eye-show,
+.eye-hide {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Simulated SMS Banner */
+.sms-banner {
+    background: var(--surface) !important;
+    border: 1px solid var(--primary) !important;
+    box-shadow: var(--shadow-xl);
+    color: var(--text) !important;
+}
+.sms-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: inline-block;
+}
+.sms-time {
+    font-size: 10px;
+    color: var(--text-faint) !important;
+}
+.sms-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Vault Cards */
+.vault-title {
+    color: var(--text) !important;
+}
+.vault-locked-val {
+    color: var(--text) !important;
+}
+.vault-target-val {
+    color: var(--text-muted) !important;
+}
+.vault-modal-stats {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+}
+.vault-modal-stats .v-stat span {
+    color: var(--text-muted) !important;
+}
+.vault-modal-stats .v-stat strong {
+    color: var(--text) !important;
+}
+
+/* Scannable UPI QR Modal Presentation */
+.qr-code-presentation {
+    background: #ffffff !important;
+    padding: 16px;
+    border-radius: 12px;
+    display: inline-block;
+}
+.qr-vpa-pill {
+    background: var(--surface-subtle) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+}
+.qr-uri-preview-box {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. Universal Theme Contrast Safeguards
+   -------------------------------------------------------------------------- */
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* All headings inside modals and cards */
+.modal-head h2,
+.modal-head h3,
+.card-head h2,
+.card-head h3,
+.panel-head h2,
+.panel-head h3,
+.auth-heading h1,
+.auth-heading h2 {
+    color: var(--text) !important;
+}
+
+.modal-sub,
+.panel-sub,
+.auth-sub,
+.card-sub {
+    color: var(--text-muted) !important;
+}
+
+/* Form controls */
+input, select, textarea {
+    background: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--text) !important;
+}
+input::placeholder, select::placeholder, textarea::placeholder {
+    color: var(--text-faint) !important;
+}
+label, .form-label {
+    color: var(--text-secondary) !important;
+}
+
+/* Modal Close Buttons */
+.modal-close-btn {
+    color: var(--text-muted) !important;
+}
+.modal-close-btn:hover {
+    color: var(--text) !important;
+}
+
+/* Split preview & meta */
+.split-preview {
+    background: var(--surface-subtle) !important;
+    border: 1px dashed var(--border-strong) !important;
+}
+.split-preview .small,
+.split-breakdown {
+    color: var(--text-muted) !important;
+}
+.receipt-meta-grid {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border) !important;
+}
+.meta-label {
+    color: var(--text-muted) !important;
+}
+.meta-val {
+    color: var(--text) !important;
 }

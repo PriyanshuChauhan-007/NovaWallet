@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <script>
-        /* Only for avoiding a flash of the wrong theme; the toggle logic lives in main.js. */
-        try { document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark"; } catch (e) {}
+        /* Avoid theme flash: Synchronously set data-theme before first paint */
+        (function() {
+            try {
+                const stored = localStorage.getItem("color-scheme") || "light dark";
+                let resolved = stored;
+                if (stored === "light dark") {
+                    resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                }
+                document.documentElement.setAttribute("data-theme", resolved);
+                const meta = document.querySelector('meta[name="color-scheme"]');
+                if (meta) meta.content = stored;
+            } catch (e) {}
+        })();
     </script>
     <title>NovaWallet &mdash; Enterprise UPI &amp; Digital Payments</title>
     <meta name="description" content="NovaWallet: Next-generation Indian UPI and digital wallet platform. Load money, send instant transfers with OTP verification, request money and split bills.">
@@ -502,6 +513,54 @@
                         </div>
                         <button type="submit" class="btn-primary" id="reqMoneyBtn">Send Request</button>
                     </form>
+                </section>
+
+                <!-- 4. BBPS Utility BillPay Panel -->
+                <section id="billsArea" class="panel bills-panel" aria-labelledby="billsTitle">
+                    <div class="bills-header">
+                        <div class="bills-brand-wrap">
+                            <span class="bbps-logo-pill">BHARAT <span>BILLPAY</span></span>
+                            <h3 id="billsTitle">Utility Bills &amp; Recharges</h3>
+                        </div>
+                        <span class="panel-sub">NPCI Authorized BBPS Settlement</span>
+                    </div>
+
+                    <div class="bill-categories-scroll" role="tablist" aria-label="Bill categories">
+                        <button type="button" class="bill-cat-btn active" data-cat="electricity">⚡ Electricity</button>
+                        <button type="button" class="bill-cat-btn" data-cat="broadband">🌐 Broadband</button>
+                        <button type="button" class="bill-cat-btn" data-cat="mobile">📱 Mobile</button>
+                        <button type="button" class="bill-cat-btn" data-cat="fastag">🚗 FASTag</button>
+                        <button type="button" class="bill-cat-btn" data-cat="creditcard">💳 Credit Card</button>
+                        <button type="button" class="bill-cat-btn" data-cat="dth">📡 DTH</button>
+                    </div>
+
+                    <div class="bill-form-grid">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="billConsumerInput" class="field-label" id="billCatLabel">Consumer / Account ID</label>
+                            <input type="text" id="billConsumerInput" placeholder="e.g. CA No. 102938475 (BSES / Tata Power)" autocomplete="off">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-primary" id="btnFetchBill" style="height: 44px;">Fetch Bill</button>
+                        </div>
+                    </div>
+
+                    <!-- Fetched Bill Details Card -->
+                    <div class="bill-fetch-result" id="billFetchResult" style="display: none;">
+                        <div class="bill-billboard">
+                            <div class="bill-meta-left">
+                                <span class="bill-biller-title" id="billBillerName">Tata Power Delhi Distribution Ltd</span>
+                                <span class="bill-consumer-sub" id="billConsumerName">Priyanshu Chauhan (102938475)</span>
+                                <span class="bill-due-badge" id="billDueDate">Due by 20 Oct 2026</span>
+                            </div>
+                            <div class="bill-meta-right">
+                                <div class="bill-amt-block">
+                                    <span>Bill Amount</span>
+                                    <strong id="billAmountVal">₹1,480.00</strong>
+                                </div>
+                                <button type="button" class="btn-primary" id="btnPayBillConfirm">Pay via Nova UPI</button>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <datalist id="userSuggestions"></datalist>
