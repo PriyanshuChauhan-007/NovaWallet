@@ -148,10 +148,36 @@
                 </div>
             </div>
             <div class="header-right">
+                <!-- Rewards Nav Pill -->
+                <button type="button" class="btn-rewards-nav" id="navRewardsBtn" title="Nova Rewards & Scratch Cards">
+                    <span>🎁</span>
+                    <span id="navRewardsCountBadge">2 Rewards</span>
+                </button>
+
+                <!-- Ask Nova AI -->
                 <button type="button" class="btn-ask-ai-nav" id="navAskAiBtn" title="Ask Nova AI Copilot">
                     <span class="ai-sparkle">✨</span>
                     <span>Ask Nova AI</span>
                 </button>
+
+                <!-- Notifications Bell with Dropdown -->
+                <div class="notif-wrapper">
+                    <button type="button" class="icon-btn notif-bell-btn" id="notifBellBtn" aria-label="Notifications" title="Notifications">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span class="notif-dot" id="notifDot" style="display: block;"></span>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown" style="display: none;">
+                        <div class="notif-header">
+                            <span>Activity &amp; Alerts</span>
+                            <button type="button" class="notif-clear-btn" id="markNotifsReadBtn">Mark all read</button>
+                        </div>
+                        <div class="notif-list" id="notifList"></div>
+                    </div>
+                </div>
+
                 <div id="userBadge" class="handle-pill">@user</div>
                 {{ theme_toggle('dashThemeToggle') }}
                 <button type="button" class="icon-btn" id="logoutBtn" aria-label="Logout" title="Logout">
@@ -217,6 +243,7 @@
                 <section class="titanium-card-wrapper" aria-label="Wallet and Bank Balance">
                     <div class="titanium-card">
                         <div class="card-glass-sheen"></div>
+                        <div class="card-frozen-overlay" id="cardFrozenOverlay" style="display: none;"><div class="frozen-badge"><span>🔒</span> CARD FROZEN FOR SECURITY</div><p>Unfreeze to make online &amp; UPI payments</p></div>
                         <div class="card-top-row">
                             <div class="card-brand-group">
                                 <span class="card-brand-text">NOVA PLATINUM UPI</span>
@@ -272,7 +299,7 @@
                             </div>
                             <div class="bank-meta">
                                 <div class="bank-title-line">
-                                    <span class="bank-title">HDFC Bank &bull;&bull;&bull;&bull; 4821</span>
+                                    <span class="bank-title" id="primaryBankNameDisplay">HDFC Bank &bull;&bull;&bull;&bull; 4821</span>
                                     <span class="verified-pill">
                                         <span class="status-pulse-dot"></span>
                                         IMPS / UPI ACTIVE
@@ -290,6 +317,26 @@
                                 <svg class="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                 <svg class="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Jupiter / Mercury Card Management Controls Strip -->
+                    <div class="card-controls-strip">
+                        <button type="button" class="card-ctrl-btn" id="btnToggleFreeze">
+                            <span id="freezeIcon">❄️</span>
+                            <span id="freezeText">Freeze Card</span>
+                        </button>
+                        <button type="button" class="card-ctrl-btn" id="btnRevealCardDetails">
+                            <span>👁️</span>
+                            <span>Reveal PAN &amp; CVV</span>
+                        </button>
+                        <button type="button" class="card-ctrl-btn" id="btnSwitchBankInstrument">
+                            <span>🔄</span>
+                            <span id="primaryBankSwitchLabel">Switch Bank</span>
+                        </button>
+                        <div class="card-limit-wrap">
+                            <span class="limit-label">Daily Cap: <strong id="displayDailyLimit">₹1,00,000</strong></span>
+                            <input type="range" id="sliderDailyLimit" min="5000" max="200000" step="5000" value="100000" class="ctrl-slider">
                         </div>
                     </div>
                 </section>
@@ -325,6 +372,12 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         </div>
                         <span class="action-label">Receive</span>
+                    </button>
+                    <button type="button" class="action-btn" data-panel="billsArea" id="actBills">
+                        <div class="icon-box">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                        </div>
+                        <span class="action-label">Bills</span>
                     </button>
                 </nav>
 
@@ -834,5 +887,177 @@
             </div>
         </form>
     </dialog>
+
+    <!-- Authentic NPCI UPI 2.0 MPIN Sheet Modal -->
+    <dialog id="mpinModal" class="modal mpin-sheet-modal" closedby="any" aria-labelledby="mpinSheetTitle">
+        <div class="modal-card mpin-sheet-card">
+            <div class="mpin-header">
+                <div class="npci-brand-pill">
+                    <span class="npci-logo">NPCI</span>
+                    <span class="npci-title">Unified Payments Interface 2.0</span>
+                </div>
+                <button type="button" class="icon-btn modal-close-btn" id="closeMpinModalBtn" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="mpin-txn-summary">
+                <span class="mpin-payer-tag">PAYING</span>
+                <h3 class="mpin-pay-amt" id="mpinPayAmtDisplay">₹0.00</h3>
+                <span class="mpin-receiver" id="mpinReceiverDisplay">to @merchant</span>
+                <span class="mpin-debit-from" id="mpinDebitFromDisplay">From: Liquid Wallet &bull; HDFC IMPS</span>
+            </div>
+
+            <div class="mpin-pin-section">
+                <span class="mpin-prompt-label">ENTER 4-DIGIT UPI MPIN</span>
+                <div class="mpin-dots-row" id="mpinDotsRow">
+                    <span class="mpin-dot"></span>
+                    <span class="mpin-dot"></span>
+                    <span class="mpin-dot"></span>
+                    <span class="mpin-dot"></span>
+                </div>
+                <div class="mpin-demo-hint">
+                    <span>💡 Demo UPI MPIN is <strong>1234</strong></span>
+                </div>
+            </div>
+
+            <!-- Virtual Tactile Keypad -->
+            <div class="mpin-numpad" id="mpinNumpad">
+                <button type="button" class="num-key" data-key="1">1</button>
+                <button type="button" class="num-key" data-key="2">2</button>
+                <button type="button" class="num-key" data-key="3">3</button>
+                <button type="button" class="num-key" data-key="4">4</button>
+                <button type="button" class="num-key" data-key="5">5</button>
+                <button type="button" class="num-key" data-key="6">6</button>
+                <button type="button" class="num-key" data-key="7">7</button>
+                <button type="button" class="num-key" data-key="8">8</button>
+                <button type="button" class="num-key" data-key="9">9</button>
+                <button type="button" class="num-key num-clear" id="mpinKeyClear">&larr;</button>
+                <button type="button" class="num-key" data-key="0">0</button>
+                <button type="button" class="num-key num-submit" id="mpinKeySubmit">&check;</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Nova Rewards Hub Modal -->
+    <dialog id="rewardsModal" class="modal" closedby="any" aria-labelledby="rewardsModalTitle">
+        <div class="modal-card rewards-hub-card">
+            <div class="modal-head">
+                <div>
+                    <h3 id="rewardsModalTitle">Nova Rewards &amp; Cashbacks</h3>
+                    <p class="modal-sub">Earn scratch cards on transactions &bull; Real cash credited straight to wallet</p>
+                </div>
+                <form method="dialog"><button class="icon-btn modal-close-btn" type="submit" aria-label="Close">&times;</button></form>
+            </div>
+
+            <div class="rewards-grid" id="rewardsCardsGrid"></div>
+        </div>
+    </dialog>
+
+    <!-- Interactive HTML5 Canvas Scratch Card Modal -->
+    <dialog id="scratchModal" class="modal" closedby="any" aria-labelledby="scratchModalTitle">
+        <div class="modal-card scratch-canvas-card">
+            <div class="modal-head">
+                <span class="cred-perk-badge">CRED-GRADE SCRATCH &amp; WIN</span>
+                <button type="button" class="icon-btn modal-close-btn" id="closeScratchModalBtn" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="scratch-stage">
+                <div class="scratch-prize-card" id="scratchPrizeCard">
+                    <span class="prize-emoji">🎉</span>
+                    <span class="prize-sub">CASHBACK REWARD</span>
+                    <h2 class="prize-amt" id="scratchPrizeAmt">₹42.00</h2>
+                    <span class="prize-note" id="scratchPrizeTitle">Merchant Settlement Bonus</span>
+                    <div class="prize-credited-badge" id="scratchCreditedBadge">✓ Credited to Liquid Wallet</div>
+                </div>
+
+                <canvas id="scratchCanvas" width="280" height="280"></canvas>
+            </div>
+
+            <div class="scratch-instructions" id="scratchInstructions">
+                <span>Rub your cursor or finger across the silver foil to scratch!</span>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Card PAN & CVV Reveal Modal -->
+    <dialog id="cardRevealModal" class="modal" closedby="any" aria-labelledby="revealModalTitle">
+        <div class="modal-card reveal-card-modal">
+            <div class="modal-head">
+                <div>
+                    <h3 id="revealModalTitle">Virtual Titanium Card Credentials</h3>
+                    <p class="modal-sub">Authenticated 256-Bit PPI Tokenization</p>
+                </div>
+                <form method="dialog"><button class="icon-btn modal-close-btn" type="submit" aria-label="Close">&times;</button></form>
+            </div>
+
+            <div class="reveal-virtual-card">
+                <div class="reveal-chip-row">
+                    <span class="card-brand-text">NOVA PLATINUM</span>
+                    <span class="rupay-wordmark">UPI GLOBAL</span>
+                </div>
+                <div class="reveal-pan" id="revealedPan">4532 8812 7640 9012</div>
+                <div class="reveal-details-row">
+                    <div>
+                        <span class="rev-label">CARDHOLDER</span>
+                        <strong id="revealedHolder">PRIYANSHU CHAUHAN</strong>
+                    </div>
+                    <div>
+                        <span class="rev-label">EXPIRY</span>
+                        <strong id="revealedExpiry">09/29</strong>
+                    </div>
+                    <div>
+                        <span class="rev-label">CVV</span>
+                        <strong class="cvv-badge" id="revealedCvv">481</strong>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn-primary" id="copyCardNumberBtn">Copy 16-Digit Card Number</button>
+        </div>
+    </dialog>
+
+    <!-- WhatsApp Shareable Receipt Modal -->
+    <dialog id="shareReceiptModal" class="modal" closedby="any" aria-labelledby="shareTitle">
+        <div class="modal-card share-receipt-card">
+            <div class="modal-head">
+                <h3 id="shareTitle">Payment Receipt</h3>
+                <form method="dialog"><button class="icon-btn modal-close-btn" type="submit" aria-label="Close">&times;</button></form>
+            </div>
+
+            <div class="gpay-receipt-billboard" id="gpayReceiptBillboard">
+                <div class="gpay-tick-circle">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <span class="gpay-status-text">Payment Successful</span>
+                <h2 class="gpay-bill-amt" id="shareReceiptAmt">₹0.00</h2>
+                <div class="gpay-to-wrap">
+                    <span>Paid to</span>
+                    <strong id="shareReceiptReceiver">Merchant</strong>
+                </div>
+
+                <div class="gpay-meta-table">
+                    <div class="meta-item">
+                        <span>UPI Ref ID</span>
+                        <strong id="shareReceiptRef">TXN_12345</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Date &amp; Time</span>
+                        <strong id="shareReceiptTime">Just now</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Debited From</span>
+                        <strong id="shareReceiptBank">HDFC Bank •••• 4821</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions-row">
+                <button type="button" class="btn-primary" id="btnShareWhatsApp">
+                    <span>Share on WhatsApp &rarr;</span>
+                </button>
+                <button type="button" class="btn-ghost" id="btnDownloadReceiptPng">Download Receipt Image</button>
+            </div>
+        </div>
+    </dialog>
+
 </body>
 </html>

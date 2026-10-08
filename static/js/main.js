@@ -428,11 +428,40 @@
         const outCntEl = document.getElementById('viewOutflowCount');
         if (outCntEl) outCntEl.textContent = `${outCount} settlement${outCount === 1 ? '' : 's'}`;
 
-        // 3. Titanium Cardholder Display
+        // 3. Titanium Cardholder & Controls Display
         const chName = document.getElementById('cardHolderName');
         if (chName) {
             chName.textContent = (data.username === 'priyanshu') ? 'PRIYANSHU CHAUHAN' : (data.username || 'USER').toUpperCase();
         }
+
+        // Titanium Card state sync
+        const freezeOverlay = document.getElementById('cardFrozenOverlay');
+        const freezeBtn = document.getElementById('btnToggleFreeze');
+        const isFrozen = !!data.wallet?.card_frozen;
+        if (freezeOverlay) {
+            freezeOverlay.style.display = isFrozen ? 'flex' : 'none';
+        }
+        if (freezeBtn) {
+            freezeBtn.classList.toggle('active-freeze', isFrozen);
+            freezeBtn.innerHTML = isFrozen
+                ? `<span>❄️</span><span>Unfreeze Card</span>`
+                : `<span>🔒</span><span>Freeze Card</span>`;
+        }
+
+        const slider = document.getElementById('sliderDailyLimit');
+        const limitDisp = document.getElementById('dailyLimitDisplay');
+        if (data.wallet?.daily_limit_inr) {
+            if (slider) slider.value = data.wallet.daily_limit_inr;
+            if (limitDisp) limitDisp.textContent = formatINR(data.wallet.daily_limit_inr);
+        }
+
+        const pBankEl = document.getElementById('primaryBankNameDisplay');
+        if (pBankEl && data.wallet?.primary_bank) {
+            pBankEl.textContent = `${data.wallet.primary_bank} •••• 4821`;
+        }
+
+        updateRewardsBadge();
+        loadNotifications();
 
         // 4. UPI VPA update
         if (data.username) {
@@ -1524,6 +1553,8 @@
                     body: JSON.stringify({ amount: amt })
                 });
                 showToast(res.msg || 'Bank Transfer Successful!');
+                playSuccessChime();
+                launchConfetti();
                 document.getElementById('depAmt').value = '';
                 togglePanel('depositArea');
                 fetchUserData();
@@ -1588,6 +1619,8 @@
                     body: JSON.stringify({ to, amount: amt, category, otp })
                 });
                 showToast(res.msg || 'Transfer successful!');
+                playSuccessChime();
+                launchConfetti();
                 document.getElementById('payStep2').style.display = 'none';
                 document.getElementById('payStep1').style.display = 'block';
                 document.getElementById('payTo').value = '';
@@ -1596,6 +1629,13 @@
                 document.querySelectorAll('.otp-box-digit').forEach(b => { b.value = ''; });
                 togglePanel('payArea');
                 fetchUserData();
+
+                if (res.scratch_card_reward) {
+                    setTimeout(() => {
+                        showToast(`🎁 Surprise Scratch Card Unlocked! Check rewards.`);
+                        updateRewardsBadge();
+                    }, 1000);
+                }
 
                 // Open receipt modal for instant gratification!
                 if (res.txn_id) {
@@ -1948,6 +1988,896 @@
         });
     }
 
+
+    // -------------------------------------------------------------------------
+    // Audio Synthesis Engine (Google Pay / CRED Acoustic Feedback)
+    // -------------------------------------------------------------------------
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                audioCtx = new AudioContextClass();
+            }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    function playSuccessChime() {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+
+            // Dual tone harmonic chord: C5 (523.25Hz) + E5 (659.25Hz) -> G5 (783.99Hz)
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            const gain2 = ctx.createGain();
+
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, now);
+            osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
+
+            gain1.gain.setValueAtTime(0.2, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(659.25, now + 0.1);
+            osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.28);
+
+            gain2.gain.setValueAtTime(0.15, now + 0.1);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+
+            osc1.start(now);
+            osc1.stop(now + 0.7);
+            osc2.start(now + 0.1);
+            osc2.stop(now + 0.9);
+        } catch (e) {
+            console.debug('Audio feedback unavailable:', e);
+        }
+    }
+
+    function playKeypadClick() {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        } catch (e) {}
+    }
+
+    // -------------------------------------------------------------------------
+    // Canvas Confetti Celebration Physics
+    // -------------------------------------------------------------------------
+    function launchConfetti() {
+        let canvas = document.getElementById('confettiCanvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'confettiCanvas';
+            document.body.appendChild(canvas);
+        }
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#34d399', '#ffffff'];
+        const particles = [];
+        const count = 100;
+
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: canvas.width / 2 + (Math.random() - 0.5) * 200,
+                y: canvas.height * 0.45,
+                w: Math.random() * 8 + 4,
+                h: Math.random() * 6 + 3,
+                vx: (Math.random() - 0.5) * 16,
+                vy: (Math.random() - 1.2) * 18,
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 12,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                alpha: 1,
+                decay: Math.random() * 0.015 + 0.008,
+                gravity: 0.35
+            });
+        }
+
+        let animId;
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let active = 0;
+
+            for (const p of particles) {
+                if (p.alpha <= 0) continue;
+                active++;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                p.rot += p.rotSpeed;
+                p.alpha = Math.max(0, p.alpha - p.decay);
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rot * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+
+            if (active > 0) {
+                animId = requestAnimationFrame(update);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                cancelAnimationFrame(animId);
+            }
+        }
+        update();
+    }
+
+    // -------------------------------------------------------------------------
+    // NPCI UPI 2.0 MPIN Bottom Sheet / Modal
+    // -------------------------------------------------------------------------
+    let mpinState = {
+        currentPin: '',
+        onSuccess: null,
+        onCancel: null
+    };
+
+    function openMpinSheet({ receiver, amount, bank, onSuccess, onCancel }) {
+        mpinState.currentPin = '';
+        mpinState.onSuccess = onSuccess;
+        mpinState.onCancel = onCancel;
+
+        const modal = document.getElementById('mpinModal');
+        if (!modal) {
+            // Fallback if dialog missing
+            if (onSuccess) onSuccess('1234');
+            return;
+        }
+
+        const recvEl = document.getElementById('mpinReceiverDisplay');
+        const amtEl = document.getElementById('mpinAmountDisplay');
+        const bankEl = document.getElementById('mpinBankDisplay');
+        const errEl = document.getElementById('mpinError');
+
+        if (recvEl) recvEl.textContent = receiver || 'Merchant';
+        if (amtEl) amtEl.textContent = typeof amount === 'number' ? formatINR(amount) : amount;
+        if (bankEl) bankEl.textContent = bank || (state.userData?.wallet?.primary_bank ? `${state.userData.wallet.primary_bank} •••• 4821` : 'HDFC Bank •••• 4821');
+        if (errEl) errEl.textContent = '';
+
+        updateMpinDots();
+        modal.showModal();
+    }
+
+    function updateMpinDots() {
+        const dots = document.querySelectorAll('.pin-dot');
+        dots.forEach((dot, idx) => {
+            if (idx < mpinState.currentPin.length) {
+                dot.classList.add('filled');
+            } else {
+                dot.classList.remove('filled');
+            }
+        });
+    }
+
+    function initMpinModal() {
+        const modal = document.getElementById('mpinModal');
+        const closeBtn = document.getElementById('closeMpinModalBtn');
+        const backspaceBtn = document.getElementById('mpinBackspaceBtn');
+        const submitBtn = document.getElementById('mpinSubmitBtn');
+        const errEl = document.getElementById('mpinError');
+
+        closeBtn?.addEventListener('click', () => {
+            modal?.close();
+            if (mpinState.onCancel) mpinState.onCancel();
+        });
+
+        // Numeric keypad buttons
+        document.querySelectorAll('.mpin-num-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = btn.dataset.num;
+                if (!num || mpinState.currentPin.length >= 4) return;
+                playKeypadClick();
+                mpinState.currentPin += num;
+                updateMpinDots();
+                if (errEl) errEl.textContent = '';
+
+                if (mpinState.currentPin.length === 4) {
+                    setTimeout(() => handleMpinSubmit(), 120);
+                }
+            });
+        });
+
+        backspaceBtn?.addEventListener('click', () => {
+            if (mpinState.currentPin.length > 0) {
+                playKeypadClick();
+                mpinState.currentPin = mpinState.currentPin.slice(0, -1);
+                updateMpinDots();
+                if (errEl) errEl.textContent = '';
+            }
+        });
+
+        submitBtn?.addEventListener('click', handleMpinSubmit);
+
+        function handleMpinSubmit() {
+            if (mpinState.currentPin.length < 4) {
+                if (errEl) errEl.textContent = 'Enter complete 4-digit UPI PIN';
+                return;
+            }
+
+            // Demo default MPIN is 1234
+            if (mpinState.currentPin !== '1234') {
+                playKeypadClick();
+                if (errEl) errEl.textContent = 'Incorrect UPI PIN. (Demo MPIN: 1234)';
+                const dotsRow = document.querySelector('.mpin-dots-row');
+                if (dotsRow) {
+                    dotsRow.style.transform = 'translateX(-8px)';
+                    setTimeout(() => { dotsRow.style.transform = 'translateX(8px)'; }, 80);
+                    setTimeout(() => { dotsRow.style.transform = 'translateX(0)'; }, 160);
+                }
+                mpinState.currentPin = '';
+                updateMpinDots();
+                return;
+            }
+
+            modal?.close();
+            if (mpinState.onSuccess) {
+                mpinState.onSuccess(mpinState.currentPin);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // BBPS Bharat BillPay Utility Engine
+    // -------------------------------------------------------------------------
+    let currentFetchedBill = null;
+
+    function initBbpsBills() {
+        const actBillsBtn = document.getElementById('actBills');
+        const billsPanel = document.getElementById('billsArea');
+        const fetchBtn = document.getElementById('btnFetchBill');
+        const consumerInput = document.getElementById('billConsumerInput');
+        const resultCard = document.getElementById('billFetchResult');
+        const payConfirmBtn = document.getElementById('btnPayBillConfirm');
+        const catLabel = document.getElementById('billCatLabel');
+
+        actBillsBtn?.addEventListener('click', () => {
+            togglePanel('billsArea');
+        });
+
+        // Category selection
+        let activeCategory = 'electricity';
+        const placeholders = {
+            electricity: 'e.g. CA No. 102938475 (BSES / Tata Power)',
+            broadband: 'e.g. Acc No. 0804829102 (Airtel Xstream / ACT)',
+            mobile: 'e.g. 10-digit Mobile No. (Jio / Vi / Airtel)',
+            fastag: 'e.g. Vehicle Reg No. DL01AB1234',
+            creditcard: 'e.g. Last 4 Digits of Card',
+            dth: 'e.g. Subscriber ID 3019283748'
+        };
+
+        document.querySelectorAll('.bill-cat-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.bill-cat-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeCategory = btn.dataset.cat || 'electricity';
+                if (catLabel) catLabel.textContent = btn.textContent.trim();
+                if (consumerInput) {
+                    consumerInput.placeholder = placeholders[activeCategory] || 'Enter Consumer ID';
+                    consumerInput.value = '';
+                    consumerInput.focus();
+                }
+                if (resultCard) resultCard.style.display = 'none';
+                currentFetchedBill = null;
+            });
+        });
+
+        // Fetch Bill Action
+        fetchBtn?.addEventListener('click', async () => {
+            const idVal = consumerInput?.value.trim();
+            if (!idVal) {
+                return showToast('Please enter consumer ID or account number', true);
+            }
+
+            toggleBtnLoading('btnFetchBill', true);
+            try {
+                const res = await apiRequest('/bills/fetch', {
+                    method: 'POST',
+                    body: JSON.stringify({ category: activeCategory, consumer_id: idVal })
+                });
+
+                currentFetchedBill = res.bill;
+                const billerEl = document.getElementById('billBillerName');
+                const nameEl = document.getElementById('billConsumerName');
+                const dueEl = document.getElementById('billDueDate');
+                const amtEl = document.getElementById('billAmountVal');
+
+                if (billerEl) billerEl.textContent = res.bill.biller;
+                if (nameEl) nameEl.textContent = `${res.bill.consumer_name} (${res.bill.consumer_id})`;
+                if (dueEl) dueEl.textContent = `Due by ${res.bill.due_date}`;
+                if (amtEl) amtEl.textContent = formatINR(res.bill.amount);
+
+                if (resultCard) {
+                    resultCard.style.display = 'block';
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                showToast('BBPS bill fetched successfully!');
+            } catch (err) {
+                showToast(err.message, true);
+            } finally {
+                toggleBtnLoading('btnFetchBill', false, 'Fetch Bill');
+            }
+        });
+
+        // Pay Bill with NPCI MPIN Confirmation
+        payConfirmBtn?.addEventListener('click', () => {
+            if (!currentFetchedBill) return;
+
+            openMpinSheet({
+                receiver: currentFetchedBill.biller,
+                amount: currentFetchedBill.amount,
+                bank: state.userData?.wallet?.primary_bank ? `${state.userData.wallet.primary_bank} •••• 4821` : 'HDFC Bank •••• 4821',
+                onSuccess: async (mpin) => {
+                    toggleBtnLoading('btnPayBillConfirm', true);
+                    try {
+                        const payRes = await apiRequest('/bills/pay', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                bill_id: currentFetchedBill.bill_id,
+                                mpin: mpin
+                            })
+                        });
+
+                        playSuccessChime();
+                        launchConfetti();
+                        showToast(payRes.msg || 'Bill payment successful!');
+
+                        if (resultCard) resultCard.style.display = 'none';
+                        if (consumerInput) consumerInput.value = '';
+                        currentFetchedBill = null;
+
+                        // Refresh wallet balances
+                        fetchUserData();
+
+                        // Open Google Pay style receipt
+                        if (payRes.txn_id) {
+                            openShareReceipt({
+                                txn_id: payRes.txn_id,
+                                amount: payRes.amount,
+                                receiver: payRes.biller,
+                                bank: state.userData?.wallet?.primary_bank ? `${state.userData.wallet.primary_bank} •••• 4821` : 'HDFC Bank •••• 4821',
+                                timestamp: new Date().toLocaleString('en-IN')
+                            });
+                        }
+
+                        if (payRes.reward) {
+                            setTimeout(() => {
+                                showToast(`🎁 Mystery Scratch Card Unlocked (up to ₹${payRes.reward.max_cashback})!`);
+                                updateRewardsBadge();
+                            }, 1200);
+                        }
+                    } catch (err) {
+                        showToast(err.message, true);
+                    } finally {
+                        toggleBtnLoading('btnPayBillConfirm', false, 'Pay via Nova UPI');
+                    }
+                }
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // CRED-style Mystery Scratch Cards & Rewards Hub
+    // -------------------------------------------------------------------------
+    let activeScratchingReward = null;
+
+    async function updateRewardsBadge() {
+        try {
+            const res = await apiRequest('/rewards');
+            const unclaimed = (res.rewards || []).filter(r => !r.claimed).length;
+            const badge = document.getElementById('navRewardsCountBadge');
+            if (badge) {
+                badge.textContent = `${unclaimed} Reward${unclaimed === 1 ? '' : 's'}`;
+            }
+        } catch (e) {}
+    }
+
+    function initRewardsAndScratchCard() {
+        const navRewardsBtn = document.getElementById('navRewardsBtn');
+        const rewardsModal = document.getElementById('rewardsModal');
+        const scratchModal = document.getElementById('scratchModal');
+        const claimScratchBtn = document.getElementById('btnClaimScratchReward');
+
+        navRewardsBtn?.addEventListener('click', () => {
+            loadAndRenderRewards();
+            rewardsModal?.showModal();
+        });
+
+        claimScratchBtn?.addEventListener('click', () => {
+            scratchModal?.close();
+            rewardsModal?.showModal();
+            loadAndRenderRewards();
+        });
+    }
+
+    async function loadAndRenderRewards() {
+        const grid = document.getElementById('rewardsGrid');
+        if (!grid) return;
+
+        grid.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">Loading rewards...</div>';
+
+        try {
+            const res = await apiRequest('/rewards');
+            const rewards = res.rewards || [];
+
+            if (!rewards.length) {
+                grid.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No rewards yet. Pay bills or transfer > ₹100 to earn mystery scratch cards!</div>';
+                return;
+            }
+
+            grid.innerHTML = rewards.map(r => {
+                if (r.claimed) {
+                    return `
+                        <div class="reward-card-tile reward-tile-claimed">
+                            <span class="reward-shimmer-badge">🎉</span>
+                            <h4>${escapeHtml(r.title)}</h4>
+                            <div class="reward-claimed-amt">+${formatINR(r.amount)}</div>
+                            <p>Credited to Wallet</p>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="reward-card-tile unclaimed" onclick="window.NovaApp.openScratchCard(${r.id}, ${r.amount}, '${escapeHtml(r.title)}')">
+                            <span class="reward-shimmer-badge">🎁</span>
+                            <h4>${escapeHtml(r.title)}</h4>
+                            <p>Tap to Scratch</p>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            updateRewardsBadge();
+        } catch (err) {
+            grid.innerHTML = `<div style="padding: 20px; color: var(--danger); font-size: 12px;">Failed to load rewards: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    function openScratchCard(rewardId, amount, title) {
+        document.getElementById('rewardsModal')?.close();
+        const scratchModal = document.getElementById('scratchModal');
+        if (!scratchModal) return;
+
+        activeScratchingReward = { id: rewardId, amount, title, claimed: false };
+
+        const amtEl = document.getElementById('scratchRewardAmount');
+        const descEl = document.getElementById('scratchRewardDesc');
+        const claimBtn = document.getElementById('btnClaimScratchReward');
+
+        if (amtEl) amtEl.textContent = formatINR(amount);
+        if (descEl) descEl.textContent = title;
+        if (claimBtn) claimBtn.style.display = 'none';
+
+        scratchModal.showModal();
+        setupScratchCanvas();
+    }
+
+    function setupScratchCanvas() {
+        const canvas = document.getElementById('scratchCanvas');
+        if (!canvas) return;
+
+        canvas.width = 260;
+        canvas.height = 260;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Draw opaque metallic foil cover with CRED pattern
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(0, 0, 260, 260);
+
+        // Holographic diagonal streaks
+        const grad = ctx.createLinearGradient(0, 0, 260, 260);
+        grad.addColorStop(0, '#94a3b8');
+        grad.addColorStop(0.3, '#cbd5e1');
+        grad.addColorStop(0.5, '#64748b');
+        grad.addColorStop(0.7, '#cbd5e1');
+        grad.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 260, 260);
+
+        // Foil branding
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NOVA REWARDS', 130, 115);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillText('Rub to reveal cashback', 130, 145);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = '22px Inter, sans-serif';
+        ctx.fillText('✨', 130, 80);
+
+        let isScratching = false;
+
+        function scratch(x, y) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, 22, 0, Math.PI * 2);
+            ctx.fill();
+            checkScratchProgress();
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.onmousedown = (e) => { isScratching = true; const p = getPos(e); scratch(p.x, p.y); };
+        window.onmouseup = () => { isScratching = false; };
+        canvas.onmousemove = (e) => { if (isScratching) { const p = getPos(e); scratch(p.x, p.y); } };
+
+        canvas.ontouchstart = (e) => { isScratching = true; const p = getPos(e); scratch(p.x, p.y); };
+        window.ontouchend = () => { isScratching = false; };
+        canvas.ontouchmove = (e) => {
+            if (isScratching) {
+                e.preventDefault();
+                const p = getPos(e);
+                scratch(p.x, p.y);
+            }
+        };
+
+        let checkedTimeout = null;
+        function checkScratchProgress() {
+            if (activeScratchingReward?.claimed) return;
+            if (checkedTimeout) return;
+
+            checkedTimeout = setTimeout(() => {
+                checkedTimeout = null;
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imgData.data;
+                let transparent = 0;
+                const total = pixels.length / 4;
+
+                // Sample every 4th pixel for speed
+                for (let i = 3; i < pixels.length; i += 16) {
+                    if (pixels[i] === 0) transparent++;
+                }
+
+                const ratio = transparent / (total / 4);
+                if (ratio > 0.40 && !activeScratchingReward.claimed) {
+                    activeScratchingReward.claimed = true;
+                    // Auto reveal rest with clear
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    triggerRewardClaim(activeScratchingReward.id);
+                }
+            }, 80);
+        }
+    }
+
+    async function triggerRewardClaim(rewardId) {
+        try {
+            playSuccessChime();
+            launchConfetti();
+
+            const res = await apiRequest('/rewards/claim', {
+                method: 'POST',
+                body: JSON.stringify({ reward_id: rewardId })
+            });
+
+            showToast(res.msg || 'Cashback credited to wallet!');
+            document.getElementById('btnClaimScratchReward').style.display = 'inline-flex';
+            fetchUserData();
+            updateRewardsBadge();
+        } catch (err) {
+            showToast(err.message, true);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Jupiter / RazorpayX Titanium Card Controls
+    // -------------------------------------------------------------------------
+    function initCardControls() {
+        const freezeBtn = document.getElementById('btnToggleFreeze');
+        const revealBtn = document.getElementById('btnRevealCardDetails');
+        const switchBankBtn = document.getElementById('btnSwitchBankInstrument');
+        const limitSlider = document.getElementById('sliderDailyLimit');
+        const limitDisplay = document.getElementById('dailyLimitDisplay');
+        const freezeOverlay = document.getElementById('cardFrozenOverlay');
+        const copyPanBtn = document.getElementById('copyCardNumberBtn');
+
+        // Toggle Card Freeze
+        freezeBtn?.addEventListener('click', async () => {
+            toggleBtnLoading('btnToggleFreeze', true);
+            try {
+                const res = await apiRequest('/card/freeze', { method: 'POST' });
+                showToast(res.msg);
+                if (freezeOverlay) {
+                    freezeOverlay.style.display = res.frozen ? 'flex' : 'none';
+                }
+                if (freezeBtn) {
+                    freezeBtn.classList.toggle('active-freeze', res.frozen);
+                    freezeBtn.innerHTML = res.frozen
+                        ? `<span>❄️</span><span>Unfreeze Card</span>`
+                        : `<span>🔒</span><span>Freeze Card</span>`;
+                }
+            } catch (err) {
+                showToast(err.message, true);
+            } finally {
+                toggleBtnLoading('btnToggleFreeze', false, freezeOverlay?.style.display === 'flex' ? 'Unfreeze Card' : 'Freeze Card');
+            }
+        });
+
+        // Reveal 16-Digit PAN and CVV
+        revealBtn?.addEventListener('click', async () => {
+            toggleBtnLoading('btnRevealCardDetails', true);
+            try {
+                const res = await apiRequest('/card/reveal', { method: 'POST' });
+                const panEl = document.getElementById('revealedPan');
+                const holderEl = document.getElementById('revealedHolder');
+                const expEl = document.getElementById('revealedExpiry');
+                const cvvEl = document.getElementById('revealedCvv');
+
+                if (panEl) panEl.textContent = res.card_number;
+                if (holderEl) holderEl.textContent = res.cardholder;
+                if (expEl) expEl.textContent = res.expiry;
+                if (cvvEl) cvvEl.textContent = res.cvv;
+
+                document.getElementById('cardRevealModal')?.showModal();
+            } catch (err) {
+                showToast(err.message, true);
+            } finally {
+                toggleBtnLoading('btnRevealCardDetails', false, 'Reveal Details');
+            }
+        });
+
+        // Copy 16-digit card number
+        copyPanBtn?.addEventListener('click', () => {
+            const pan = document.getElementById('revealedPan')?.textContent?.replace(/\s/g, '');
+            if (pan) {
+                navigator.clipboard.writeText(pan).then(() => {
+                    showToast('16-Digit Card Number copied!');
+                }).catch(() => {
+                    showToast('Failed to copy card number', true);
+                });
+            }
+        });
+
+        // Switch linked bank instrument
+        switchBankBtn?.addEventListener('click', async () => {
+            toggleBtnLoading('btnSwitchBankInstrument', true);
+            try {
+                const res = await apiRequest('/card/switch_bank', { method: 'POST' });
+                showToast(res.msg);
+                fetchUserData();
+            } catch (err) {
+                showToast(err.message, true);
+            } finally {
+                toggleBtnLoading('btnSwitchBankInstrument', false, 'Switch Bank');
+            }
+        });
+
+        // Daily Limit Slider
+        let limitDebounceTimer = null;
+        limitSlider?.addEventListener('input', (e) => {
+            const val = Number(e.target.value) || 0;
+            if (limitDisplay) limitDisplay.textContent = formatINR(val);
+
+            clearTimeout(limitDebounceTimer);
+            limitDebounceTimer = setTimeout(async () => {
+                try {
+                    await apiRequest('/card/limit', {
+                        method: 'POST',
+                        body: JSON.stringify({ limit_inr: val })
+                    });
+                    showToast(`Daily transaction limit set to ${formatINR(val)}`);
+                } catch (err) {
+                    showToast(err.message, true);
+                }
+            }, 600);
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Notification Bell & Alerts Dropdown
+    // -------------------------------------------------------------------------
+    function initNotifications() {
+        const bellBtn = document.getElementById('notifBellBtn');
+        const dropdown = document.getElementById('notifDropdown');
+        const clearBtn = document.getElementById('markNotifsReadBtn');
+
+        bellBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!dropdown) return;
+            const isVisible = dropdown.style.display === 'block';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                loadNotifications();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (dropdown && !dropdown.contains(e.target) && e.target !== bellBtn) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        clearBtn?.addEventListener('click', async () => {
+            try {
+                await apiRequest('/notifications/read', { method: 'POST' });
+                const dot = document.getElementById('notifDot');
+                if (dot) dot.style.display = 'none';
+                loadNotifications();
+                showToast('All notifications marked as read');
+            } catch (e) {}
+        });
+    }
+
+    async function loadNotifications() {
+        const list = document.getElementById('notifList');
+        const dot = document.getElementById('notifDot');
+        if (!list) return;
+
+        try {
+            const res = await apiRequest('/notifications');
+            const notifs = res.notifications || [];
+
+            if (dot) {
+                dot.style.display = res.unread_count > 0 ? 'block' : 'none';
+            }
+
+            if (!notifs.length) {
+                list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+                return;
+            }
+
+            const icons = {
+                security: '🛡️',
+                transaction: '💳',
+                reward: '🎁',
+                info: 'ℹ️'
+            };
+
+            list.innerHTML = notifs.map(n => `
+                <div class="notif-item ${n.read ? '' : 'unread'}">
+                    <div class="notif-icon-circle">${icons[n.category] || '🔔'}</div>
+                    <div class="notif-content">
+                        <div class="notif-title">${escapeHtml(n.title)}</div>
+                        <div class="notif-desc">${escapeHtml(n.message)}</div>
+                        <div class="notif-time">${escapeHtml(n.timestamp || 'Just now')}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            list.innerHTML = '<div class="notif-empty">Failed to load alerts</div>';
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Google Pay / WhatsApp Shareable Receipt Modal
+    // -------------------------------------------------------------------------
+    let currentReceiptData = null;
+
+    function openShareReceipt(data) {
+        currentReceiptData = data;
+        const modal = document.getElementById('shareReceiptModal');
+        if (!modal) return;
+
+        const amtEl = document.getElementById('shareReceiptAmt');
+        const recvEl = document.getElementById('shareReceiptReceiver');
+        const refEl = document.getElementById('shareReceiptRef');
+        const timeEl = document.getElementById('shareReceiptTime');
+        const bankEl = document.getElementById('shareReceiptBank');
+
+        if (amtEl) amtEl.textContent = typeof data.amount === 'number' ? formatINR(data.amount) : data.amount;
+        if (recvEl) recvEl.textContent = data.receiver || 'Merchant';
+        if (refEl) refEl.textContent = data.txn_id || 'TXN_SUCCESS';
+        if (timeEl) timeEl.textContent = data.timestamp || new Date().toLocaleString('en-IN');
+        if (bankEl) bankEl.textContent = data.bank || 'HDFC Bank •••• 4821';
+
+        modal.showModal();
+    }
+
+    function initShareReceiptModal() {
+        const shareWaBtn = document.getElementById('btnShareWhatsApp');
+        const downloadBtn = document.getElementById('btnDownloadReceiptPng');
+
+        shareWaBtn?.addEventListener('click', () => {
+            if (!currentReceiptData) return;
+            const amt = typeof currentReceiptData.amount === 'number' ? formatINR(currentReceiptData.amount) : currentReceiptData.amount;
+            const text = encodeURIComponent(
+                `*NovaWallet UPI 2.0 Payment Receipt*\n\n` +
+                `✅ *Status:* Payment Successful\n` +
+                `💵 *Amount:* ${amt}\n` +
+                `👤 *Paid to:* ${currentReceiptData.receiver}\n` +
+                `🏦 *Debited From:* ${currentReceiptData.bank || 'HDFC Bank'}\n` +
+                `🔢 *UPI Ref ID:* ${currentReceiptData.txn_id}\n` +
+                `📅 *Timestamp:* ${currentReceiptData.timestamp || new Date().toLocaleString('en-IN')}\n\n` +
+                `_Powered by NovaWallet Instant Settlement Network_`
+            );
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        });
+
+        downloadBtn?.addEventListener('click', () => {
+            if (!currentReceiptData) return;
+            const amt = typeof currentReceiptData.amount === 'number' ? formatINR(currentReceiptData.amount) : currentReceiptData.amount;
+            const receiptText =
+                `========================================\n` +
+                `       NOVAWALLET PAYMENT RECEIPT        \n` +
+                `========================================\n` +
+                `Status: Payment Successful\n` +
+                `Amount: ${amt}\n` +
+                `Paid to: ${currentReceiptData.receiver}\n` +
+                `Debited From: ${currentReceiptData.bank || 'HDFC Bank'}\n` +
+                `UPI Ref ID: ${currentReceiptData.txn_id}\n` +
+                `Date: ${currentReceiptData.timestamp || new Date().toLocaleString('en-IN')}\n` +
+                `========================================\n` +
+                `Verified by NPCI UPI 2.0 Engine\n`;
+
+            const blob = new Blob([receiptText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `NovaReceipt_${currentReceiptData.txn_id || 'payment'}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Receipt saved to device');
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Real-Time Background Sync Engine
+    // -------------------------------------------------------------------------
+    function initBackgroundSync() {
+        setInterval(async () => {
+            if (!state.token || !state.activeUser) return;
+            try {
+                const res = await apiRequest('/sync');
+                if (res.wallet) {
+                    if (res.wallet.wallet_balance !== state.currentWalletBalance) {
+                        fetchUserData();
+                    }
+                    const dot = document.getElementById('notifDot');
+                    if (dot) {
+                        dot.style.display = res.unread_notifications > 0 ? 'block' : 'none';
+                    }
+                    const badge = document.getElementById('navRewardsCountBadge');
+                    if (badge && res.unclaimed_rewards !== undefined) {
+                        badge.textContent = `${res.unclaimed_rewards} Reward${res.unclaimed_rewards === 1 ? '' : 's'}`;
+                    }
+                }
+            } catch (e) {}
+        }, 15000);
+    }
+
     // -------------------------------------------------------------------------
     // Global Lifecycle Entrypoint
     // -------------------------------------------------------------------------
@@ -1965,6 +2895,13 @@
         initPanels();
         initSplitBill();
         initDialogLightDismissFallbacks();
+        initMpinModal();
+        initBbpsBills();
+        initCardControls();
+        initRewardsAndScratchCard();
+        initNotifications();
+        initShareReceiptModal();
+        initBackgroundSync();
 
         if (state.token && state.activeUser) {
             document.getElementById('auth').style.display = 'none';
@@ -1985,7 +2922,10 @@
         declineRequest,
         cancelRequest,
         selectPeer,
-        openReceipt
+        openReceipt,
+        openScratchCard,
+        openShareReceipt,
+        openMpinSheet
     };
 
 })();

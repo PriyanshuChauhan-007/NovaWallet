@@ -203,6 +203,19 @@ class Wallet(db.Model):
     updated_at: Any = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
     user: Any = db.relationship("User", back_populates="wallet")
+    card_frozen: Any = db.Column(db.Boolean, nullable=False, default=False)
+    daily_limit_paise: Any = db.Column(db.Integer, nullable=False, default=100_000 * PAISE)
+    primary_bank: Any = db.Column(db.String(64), nullable=False, default="HDFC Bank •••• 4821")
+    mpin_hash: Any = db.Column(db.String(255), nullable=True)
+
+    def set_mpin(self, pin: str) -> None:
+        self.mpin_hash = generate_password_hash(pin)
+
+    def check_mpin(self, pin: str) -> bool:
+        if not self.mpin_hash:
+            return pin == "1234"  # Default demo MPIN
+        return check_password_hash(self.mpin_hash, pin)
+
 
     __table_args__ = (
         # Last line of defence: the DB itself refuses negative balances.
@@ -411,6 +424,41 @@ class Vault(db.Model):
             self.updated_at = updated_at
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+
+
+
+class Reward(db.Model):
+    """CRED-style Scratch Card Rewards & Cashbacks."""
+    __tablename__ = "rewards"
+    __allow_unmapped__ = True
+
+    id: Any = db.Column(db.Integer, primary_key=True)
+    user_id: Any = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Any = db.Column(db.String(100), nullable=False)
+    subtitle: Any = db.Column(db.String(150), default="Tap & scratch to reveal cashback")
+    amount_paise: Any = db.Column(db.Integer, nullable=False)
+    is_claimed: Any = db.Column(db.Boolean, default=False)
+    created_at: Any = db.Column(db.DateTime, default=utcnow)
+    claimed_at: Any = db.Column(db.DateTime, nullable=True)
+
+    user: Any = db.relationship("User", backref=db.backref("rewards", cascade="all, delete-orphan", lazy=True))
+
+
+class Notification(db.Model):
+    """Real-time financial activity and security alerts."""
+    __tablename__ = "notifications"
+    __allow_unmapped__ = True
+
+    id: Any = db.Column(db.Integer, primary_key=True)
+    user_id: Any = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Any = db.Column(db.String(120), nullable=False)
+    message: Any = db.Column(db.String(255), nullable=False)
+    kind: Any = db.Column(db.String(20), default="INFO")  # CREDIT, DEBIT, REWARD, SECURITY
+    is_read: Any = db.Column(db.Boolean, default=False)
+    created_at: Any = db.Column(db.DateTime, default=utcnow)
+
+    user: Any = db.relationship("User", backref=db.backref("notifications", cascade="all, delete-orphan", lazy=True))
 
 
 class OtpChallenge(db.Model):
@@ -770,6 +818,18 @@ def user_snapshot(user: User, history_limit: int = 500) -> dict:
             "incoming": [serialize_request(r) for r in incoming],
             "outgoing": [serialize_request(r) for r in outgoing],
         },
+        "card": {
+            "frozen": bool(getattr(wallet, "card_frozen", False)),
+            "daily_limit": to_rupees(getattr(wallet, "daily_limit_paise", 100000 * PAISE)),
+            "primary_bank": getattr(wallet, "primary_bank", "HDFC Bank •••• 4821"),
+        },
+        "wallet": {
+            "card_frozen": bool(getattr(wallet, "card_frozen", False)),
+            "daily_limit_inr": to_rupees(getattr(wallet, "daily_limit_paise", 100000 * PAISE)),
+            "primary_bank": getattr(wallet, "primary_bank", "HDFC Bank"),
+        },
+        "unread_notifications": Notification.query.filter_by(user_id=user.id, is_read=False).count(),
+        "unclaimed_rewards": Reward.query.filter_by(user_id=user.id, is_claimed=False).count(),
     }
 
 
@@ -913,6 +973,373 @@ def me():
     return ok(data=user_snapshot(current_user))
 
 
+
+# --------------------------------------------------------------------------- #
+# Routes: CRED-Style Rewards & Scratch Cards
+# --------------------------------------------------------------------------- #
+@app.route("/api/rewards", methods=["GET"])
+@jwt_required()
+def get_rewards():
+    user = current_user
+    rewards = Reward.query.filter_by(user_id=user.id).order_by(Reward.created_at.desc()).all()
+    res = []
+    for r in rewards:
+        res.append({
+            "id": r.id,
+            "title": r.title,
+            "subtitle": r.subtitle,
+            "amount": to_rupees(r.amount_paise),
+            "is_claimed": r.is_claimed,
+            "claimed": r.is_claimed,
+            "created_at": iso(r.created_at),
+            "claimed_at": iso(r.claimed_at) if r.claimed_at else None,
+        })
+    return ok(rewards=res)
+
+
+@app.route("/api/rewards/claim", methods=["POST"])
+@jwt_required()
+def claim_reward():
+    user = current_user
+    body = json_body()
+    reward_id = body.get("reward_id")
+    if not reward_id:
+        return err("Reward ID required.")
+
+    def work():
+        reward = Reward.query.filter_by(id=reward_id, user_id=user.id).first()
+        if not reward:
+            return err("Reward card not found.", 404)
+        if reward.is_claimed:
+            return ok("Already claimed!", amount=to_rupees(reward.amount_paise), claimed=True, user=user_snapshot(user))
+
+        reward.is_claimed = True
+        reward.claimed_at = utcnow()
+
+        # Atomic credit to wallet
+        db.session.execute(
+            update(Wallet)
+            .where(Wallet.user_id == user.id)
+            .values(balance_paise=Wallet.balance_paise + reward.amount_paise)
+        )
+
+        txn = Transaction(
+            txn_id=generate_txn_id(),
+            sender_id=None,
+            receiver_id=user.id,
+            amount_paise=reward.amount_paise,
+            category="Cashback",
+            kind=Transaction.KIND_LOAD,
+            note=f"Nova Cashback: {reward.title}",
+            timestamp=utcnow(),
+        )
+        db.session.add(txn)
+
+        notif = Notification(
+            user_id=user.id,
+            kind="REWARD",
+            title="Cashback Credited!",
+            message=f"+₹{to_rupees(reward.amount_paise):.2f} credited to wallet from {reward.title}.",
+        )
+        db.session.add(notif)
+        db.session.flush()
+
+        new_bal = to_rupees(user.wallet.balance_paise)
+        return ok(
+            f"Claimed ₹{to_rupees(reward.amount_paise):.2f} cashback!",
+            cashback=to_rupees(reward.amount_paise),
+            amount=to_rupees(reward.amount_paise),
+            claimed=True,
+            new_balance=new_bal,
+            user=user_snapshot(user)
+        )
+
+    return commit_or_error(work)
+
+
+# --------------------------------------------------------------------------- #
+# Routes: Daily Utility & BBPS BillPay Engine
+# --------------------------------------------------------------------------- #
+@app.route("/api/bills/fetch", methods=["POST"])
+@jwt_required()
+def fetch_bill():
+    body = json_body()
+    category = body.get("category", "Electricity")
+    consumer_id = str(body.get("consumer_id", "")).strip()
+
+    if not consumer_id:
+        return err("Consumer / Account ID is required.")
+
+    category_lower = category.lower()
+    default_operators = {
+        "electricity": "Tata Power Delhi Distribution Ltd",
+        "broadband": "Airtel Xstream Fiber",
+        "mobile": "Jio Prepaid 5G",
+        "fastag": "ICICI Bank FASTag",
+        "creditcard": "HDFC Bank Credit Card",
+        "dth": "Tata Play DTH",
+    }
+    operator = body.get("operator") or default_operators.get(category_lower, "Bharat BillPay Utility")
+
+    # Authentic deterministic mock bill generator
+    sample_amounts = {
+        "electricity": 1480.00,
+        "Electricity": 1480.00,
+        "mobile": 299.00,
+        "Mobile Prepaid": 299.00,
+        "broadband": 999.00,
+        "Broadband": 999.00,
+        "fastag": 500.00,
+        "FASTag": 500.00,
+        "dth": 450.00,
+        "DTH": 450.00,
+        "creditcard": 5420.00,
+    }
+    amt = sample_amounts.get(category_lower, sample_amounts.get(category, 650.00))
+    customer_name = "Priyanshu Chauhan" if current_user.username == "priyanshu" else current_user.username.title()
+    bill_num = f"BBPS/{operator[:4].upper()}/{secrets.token_hex(4).upper()}"
+
+    bill_details = {
+        "category": category,
+        "operator": operator,
+        "biller": operator,
+        "consumer_id": consumer_id,
+        "customer_name": customer_name,
+        "consumer_name": customer_name,
+        "bill_date": "01 Oct 2026",
+        "due_date": "20 Oct 2026",
+        "amount": amt,
+        "bill_id": bill_num,
+        "bill_number": bill_num,
+        "status": "UNPAID",
+    }
+    return ok(bill=bill_details)
+
+
+@app.route("/api/bills/pay", methods=["POST"])
+@jwt_required()
+def pay_bill():
+    user = current_user
+    body = json_body()
+    category = str(body.get("category", "Electricity")).strip()
+    operator = str(body.get("operator", "Tata Power Delhi Distribution Ltd")).strip()
+    consumer_id = str(body.get("consumer_id", "102938475")).strip()
+    mpin = str(body.get("mpin", "")).strip()
+
+    # Validate MPIN (Default demo is 1234)
+    if user.wallet and not user.wallet.check_mpin(mpin):
+        return err("Invalid UPI MPIN. Please try again.", 401)
+
+    raw_amt = body.get("amount")
+    if not raw_amt:
+        raw_amt = 1480.00
+
+    try:
+        amt = parse_amount(raw_amt, max_paise=WALLET_LIMIT_PAISE, label="Bill amount")
+    except ValueError as e:
+        return err(str(e))
+
+    def work():
+        # Check if card is frozen
+        if getattr(user.wallet, "card_frozen", False):
+            return err("Account / Card is currently FROZEN. Please unfreeze before paying bills.", 403)
+
+        # Atomic debit from wallet
+        res = db.session.execute(
+            update(Wallet)
+            .where(Wallet.user_id == user.id, Wallet.balance_paise >= amt)
+            .values(balance_paise=Wallet.balance_paise - amt)
+        )
+        if res.rowcount != 1:
+            return err("Insufficient liquid wallet balance to pay bill.", 400)
+
+        txn_id = generate_txn_id()
+        txn = Transaction(
+            txn_id=txn_id,
+            sender_id=user.id,
+            receiver_id=user.id,
+            amount_paise=amt,
+            category="Bills",
+            kind=Transaction.KIND_TRANSFER,
+            note=f"BBPS Paid: {operator} ({category}) - {consumer_id}",
+            timestamp=utcnow(),
+        )
+        db.session.add(txn)
+
+        # Unlock a surprise scratch card if bill >= ₹100
+        unlocked_reward = None
+        if amt >= 100 * PAISE:
+            cb_amt = random.randint(12, 65) * PAISE
+            reward = Reward(
+                user_id=user.id,
+                title=f"{operator} Bill Cashback",
+                subtitle="Scratch to reveal real cashback!",
+                amount_paise=cb_amt,
+            )
+            db.session.add(reward)
+            unlocked_reward = {"title": reward.title, "amount": to_rupees(cb_amt), "max_cashback": 100}
+
+        notif = Notification(
+            user_id=user.id,
+            kind="DEBIT",
+            title=f"Bill Paid: {operator}",
+            message=f"₹{to_rupees(amt):,.2f} paid successfully via BBPS Ref #{txn_id}.",
+        )
+        db.session.add(notif)
+        db.session.flush()
+
+        return ok(
+            f"Successfully paid {fmt_inr(amt)} to {operator}!",
+            txn_id=txn_id,
+            biller=operator,
+            amount=to_rupees(amt),
+            reward=unlocked_reward,
+            reward_unlocked=unlocked_reward,
+            user=user_snapshot(user),
+        )
+
+    return commit_or_error(work)
+
+
+# --------------------------------------------------------------------------- #
+# Routes: Jupiter / Mercury Card Security & Controls
+# --------------------------------------------------------------------------- #
+@app.route("/api/card/freeze", methods=["POST"])
+@jwt_required()
+def toggle_freeze_card():
+    user = current_user
+    wallet = user.wallet
+    if not wallet:
+        return err("Wallet not found.")
+
+    wallet.card_frozen = not getattr(wallet, "card_frozen", False)
+    state_str = "FROZEN" if wallet.card_frozen else "ACTIVE"
+
+    notif = Notification(
+        user_id=user.id,
+        kind="SECURITY",
+        title=f"Titanium Card {state_str}",
+        message=f"Your Nova Platinum card security status was updated to {state_str}.",
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    return ok(f"Card is now {state_str}!", frozen=wallet.card_frozen)
+
+
+@app.route("/api/card/reveal", methods=["POST"])
+@jwt_required()
+def reveal_card_details():
+    user = current_user
+    body = json_body()
+    pin = str(body.get("pin", "")).strip()
+
+    if pin and user.wallet and not user.wallet.check_mpin(pin):
+        return err("Invalid Security PIN.", 401)
+
+    pan = "4532 8812 7640 9012"
+    cvv = "481"
+    expiry = "09/29"
+    holder = "PRIYANSHU CHAUHAN" if user.username == "priyanshu" else user.username.upper()
+
+    return ok(
+        "Card details authenticated.",
+        card_number=pan,
+        pan=pan,
+        cvv=cvv,
+        expiry=expiry,
+        cardholder=holder,
+        holder=holder,
+        card={
+            "pan": pan,
+            "cvv": cvv,
+            "expiry": expiry,
+            "holder": holder,
+        }
+    )
+
+
+@app.route("/api/card/limit", methods=["POST"])
+@jwt_required()
+def set_card_limit():
+    user = current_user
+    wallet = user.wallet
+    body = json_body()
+    try:
+        limit_rupees = float(body.get("limit_inr", body.get("limit", 100000)))
+        limit_paise = int(round(limit_rupees * PAISE))
+    except (ValueError, TypeError):
+        return err("Invalid limit amount.")
+
+    wallet.daily_limit_paise = max(5000 * PAISE, min(200000 * PAISE, limit_paise))
+    db.session.commit()
+    return ok(f"Daily limit updated to ₹{limit_rupees:,.2f}!", daily_limit=limit_rupees, limit_inr=limit_rupees)
+
+
+@app.route("/api/card/switch_bank", methods=["POST"])
+@jwt_required()
+def switch_primary_bank():
+    user = current_user
+    wallet = user.wallet
+    curr = getattr(wallet, "primary_bank", "HDFC Bank •••• 4821")
+    new_bank = "ICICI Bank •••• 9924" if "HDFC" in curr else "HDFC Bank •••• 4821"
+    wallet.primary_bank = new_bank
+    db.session.commit()
+    return ok(f"Switched primary funding account to {new_bank}!", primary_bank=new_bank)
+
+
+# --------------------------------------------------------------------------- #
+# Routes: Real-time Notifications & Instant Tab Sync
+# --------------------------------------------------------------------------- #
+@app.route("/api/notifications", methods=["GET"])
+@jwt_required()
+def get_notifications():
+    user = current_user
+    notifs = Notification.query.filter_by(user_id=user.id).order_by(Notification.created_at.desc()).limit(20).all()
+    unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+    res = []
+    for n in notifs:
+        res.append({
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "kind": n.kind,
+            "category": n.kind.lower(),
+            "is_read": n.is_read,
+            "read": n.is_read,
+            "created_at": iso(n.created_at),
+            "timestamp": iso(n.created_at),
+        })
+    return ok(notifications=res, unread_count=unread_count)
+
+
+@app.route("/api/notifications/read", methods=["POST"])
+@jwt_required()
+def mark_notifications_read():
+    user = current_user
+    Notification.query.filter_by(user_id=user.id, is_read=False).update({"is_read": True})
+    db.session.commit()
+    return ok("Notifications marked as read.")
+
+
+@app.route("/api/sync", methods=["GET"])
+@jwt_required()
+def realtime_sync():
+    user = current_user
+    snap = user_snapshot(user)
+    return ok(
+        data=snap,
+        wallet={
+            "wallet_balance": snap["wallet_balance"],
+            "bank_balance": snap["bank_balance"],
+            "card_frozen": snap["card"]["frozen"],
+            "primary_bank": snap["card"]["primary_bank"],
+            "unread_notifications": snap["unread_notifications"],
+            "unclaimed_rewards": snap["unclaimed_rewards"],
+        },
+        unread_notifications=snap["unread_notifications"],
+        unclaimed_rewards=snap["unclaimed_rewards"],
+    )
 
 @app.route("/api/users/directory", methods=["GET"])
 @jwt_required()
@@ -1774,6 +2201,35 @@ def seed_demo_accounts() -> None:
         )
         db.session.add_all([t1, t2, t3, t4])
         db.session.commit()
+
+    # Pre-seed CRED-style mystery scratch cards for priyanshu
+    if Reward.query.filter_by(user_id=u.id).count() == 0:
+        r1 = Reward(
+            user_id=u.id,
+            title="Founder Merchant Cash Drop",
+            subtitle="Scratch to reveal exclusive UPI cashback",
+            amount_paise=42 * PAISE,
+            is_claimed=False,
+        )
+        r2 = Reward(
+            user_id=u.id,
+            title="CRED-Grade Superweek Card",
+            subtitle="Mystery cashback for UPI milestone",
+            amount_paise=78 * PAISE,
+            is_claimed=False,
+        )
+        db.session.add_all([r1, r2])
+
+    # Pre-seed authentic live notifications for priyanshu
+    if Notification.query.filter_by(user_id=u.id).count() == 0:
+        notifs = [
+            Notification(user_id=u.id, kind="CREDIT", title="HDFC Bank NEFT Inward", message="₹50,000.00 credited from Core Banking A/C •••• 4821."),
+            Notification(user_id=u.id, kind="DEBIT", title="Amazon Pay India Settlement", message="₹2,499.00 paid for Prime Order Ref #TXN_AMZ_2499."),
+            Notification(user_id=u.id, kind="REWARD", title="2 Mystery Scratch Cards Unlocked", message="Check your Rewards hub to scratch & claim instant cashback."),
+        ]
+        db.session.add_all(notifs)
+    db.session.commit()
+
 
 
 def init_db() -> None:

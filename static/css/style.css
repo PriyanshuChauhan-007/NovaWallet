@@ -2828,3 +2828,796 @@ form#authForm[data-mode="signup"] .signup-only {
     color: var(--text);
     margin-top: 2px;
 }
+
+/* ==========================================================================
+   Tier-1 Fintech Additions: CRED, Google Pay, Jupiter, RazorpayX Standards
+   ========================================================================== */
+
+/* 1. Header Rewards & Notifications */
+.btn-rewards-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.22) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #f59e0b;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-rewards-nav:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%);
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+}
+
+.notif-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.notif-bell-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.notif-bell-btn:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+}
+
+.notif-dot {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid var(--surface);
+    display: none;
+}
+
+.notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    overflow: hidden;
+    animation: notifSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes notifSlide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-subtle);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+.notif-clear-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.notif-clear-btn:hover {
+    text-decoration: underline;
+}
+
+.notif-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+.notif-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-hairline);
+    transition: background 0.15s ease;
+}
+.notif-item:last-child {
+    border-bottom: none;
+}
+.notif-item.unread {
+    background: rgba(16, 185, 129, 0.05);
+}
+.notif-icon-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    background: var(--surface-hover);
+}
+.notif-content {
+    flex: 1;
+    min-width: 0;
+}
+.notif-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+.notif-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    word-break: break-word;
+}
+.notif-time {
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 4px;
+}
+.notif-empty {
+    padding: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* 2. BBPS Utility BillPay Engine */
+.bills-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+}
+.bills-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.bills-brand-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.bbps-logo-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: #1e3a8a;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+}
+.bbps-logo-pill span {
+    color: #f97316;
+}
+.bills-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+.bill-categories-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
+}
+.bill-cat-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.bill-cat-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+    border-color: var(--border-strong);
+}
+.bill-cat-btn.active {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.bill-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: flex-end;
+}
+@media (max-width: 640px) {
+    .bill-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.bill-fetch-result {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-ui);
+    animation: fadeIn 0.2s ease;
+}
+.bill-billboard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.bill-meta-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.bill-biller-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+.bill-consumer-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.bill-due-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.bill-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.bill-amt-block {
+    text-align: right;
+}
+.bill-amt-block span {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.bill-amt-block strong {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+}
+
+/* 3. Jupiter / RazorpayX Titanium Card Controls */
+.titanium-card-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+}
+
+.card-frozen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #e2e8f0;
+    z-index: 10;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: var(--radius-card);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-frozen-overlay .freeze-shield-icon {
+    font-size: 32px;
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.5));
+}
+.card-frozen-overlay span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #38bdf8;
+}
+
+.card-controls-panel {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-ui);
+    padding: 12px 14px;
+}
+.card-actions-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.btn-card-ctrl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-ui);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-card-ctrl:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+    border-color: var(--border-strong);
+}
+.btn-card-ctrl.active-freeze {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    color: #0284c7;
+}
+
+.card-limit-slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.card-limit-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.card-limit-labels strong {
+    color: var(--text);
+}
+.slider-styled {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-strong);
+    outline: none;
+    cursor: pointer;
+}
+.slider-styled::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: 2px solid #ffffff;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.1s ease;
+}
+.slider-styled::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+/* 4. NPCI UPI 2.0 MPIN Sheet */
+.mpin-sheet-modal::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+.mpin-sheet-card {
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 380px;
+    padding: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    text-align: center;
+}
+.mpin-npci-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+.mpin-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.mpin-sheet-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+}
+.mpin-txn-context {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+.mpin-ctx-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+.mpin-ctx-row strong {
+    color: #f8fafc;
+}
+.mpin-ctx-amt {
+    font-size: 22px;
+    font-weight: 800;
+    color: #10b981;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.mpin-dots-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 20px 0 16px 0;
+}
+.pin-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #475569;
+    background: transparent;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pin-dot.filled {
+    background: #10b981;
+    border-color: #10b981;
+    transform: scale(1.15);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.mpin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+.mpin-num-btn, .mpin-action-btn {
+    height: 54px;
+    border-radius: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mpin-num-btn:active, .mpin-action-btn:active {
+    background: #334155;
+    transform: scale(0.96);
+}
+.mpin-action-btn.submit-btn {
+    background: #059669;
+    border-color: #10b981;
+    color: #ffffff;
+}
+.mpin-action-btn.submit-btn:hover {
+    background: #10b981;
+}
+.mpin-error-msg {
+    color: #ef4444;
+    font-size: 11px;
+    min-height: 16px;
+    margin-top: 6px;
+}
+
+/* 5. CRED-style Mystery Scratch Cards */
+.rewards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+.reward-card-tile {
+    position: relative;
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid #334155;
+}
+.reward-card-tile:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+.reward-card-tile.unclaimed {
+    background: linear-gradient(135deg, #374151 0%, #111827 50%, #4b5563 100%);
+    border: 1px solid #9ca3af;
+}
+.reward-shimmer-badge {
+    font-size: 28px;
+    margin-bottom: 6px;
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.reward-card-tile h4 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f3f4f6;
+}
+.reward-card-tile p {
+    margin: 4px 0 0 0;
+    font-size: 10px;
+    color: #9ca3af;
+}
+.reward-claimed-amt {
+    font-size: 16px;
+    font-weight: 800;
+    color: #10b981;
+    margin-top: 4px;
+}
+
+/* Scratch Card Canvas Modal */
+.scratch-card-modal-content {
+    background: #0b0f19;
+    border: 1px solid #1f2937;
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+}
+.scratch-arena {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 16px auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    background: #111827;
+}
+.scratch-prize-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: radial-gradient(circle, #065f46 0%, #022c22 100%);
+    color: #ffffff;
+}
+.scratch-prize-amt {
+    font-size: 32px;
+    font-weight: 900;
+    color: #34d399;
+    text-shadow: 0 0 15px rgba(52, 211, 153, 0.6);
+}
+.scratch-prize-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 6px;
+    color: #ffffff;
+}
+.scratch-prize-sub {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+#scratchCanvas {
+    position: absolute;
+    inset: 0;
+    cursor: crosshair;
+    z-index: 5;
+    touch-action: none;
+}
+
+/* 6. Card Reveal Modal */
+.reveal-virtual-card {
+    background: linear-gradient(135deg, #09090b 0%, #18181b 50%, #27272a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 22px;
+    color: #ffffff;
+    margin: 16px 0;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+    letter-spacing: 0.5px;
+}
+.reveal-chip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a1a1aa;
+    margin-bottom: 24px;
+}
+.reveal-pan {
+    font-family: monospace;
+    font-size: 20px;
+    letter-spacing: 2.5px;
+    font-weight: 700;
+    color: #f4f4f5;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 24px;
+}
+.reveal-details-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+}
+.rev-label {
+    display: block;
+    font-size: 9px;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.reveal-details-row strong {
+    color: #e4e4e7;
+    font-weight: 600;
+}
+.cvv-badge {
+    background: #ffffff;
+    color: #09090b !important;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+/* 7. WhatsApp & GPay Branded Receipt Modal */
+.share-receipt-card {
+    max-width: 400px;
+    width: 100%;
+    padding: 24px;
+    border-radius: 20px;
+}
+.gpay-receipt-billboard {
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    margin: 16px 0;
+    box-shadow: var(--shadow-md);
+}
+.gpay-tick-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px auto;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+}
+.gpay-status-text {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #059669;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.gpay-bill-amt {
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 8px 0;
+}
+.gpay-to-wrap {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 20px;
+}
+.gpay-to-wrap strong {
+    color: #0f172a;
+    font-weight: 700;
+}
+.gpay-meta-table {
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+.gpay-meta-table .meta-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+}
+.gpay-meta-table .meta-item span {
+    color: #64748b;
+}
+.gpay-meta-table .meta-item strong {
+    color: #0f172a;
+}
+.modal-actions-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+.modal-actions-row button {
+    flex: 1;
+}
+
+/* Confetti Canvas Layer */
+#confettiCanvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 99999;
+}
